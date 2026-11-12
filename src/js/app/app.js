@@ -636,7 +636,11 @@
       let pl;
       try { pl = App.buildPlan(); } catch (e) { console.error(e); return; }
       const st = pl.stats, n = pl.jobs.length;
-      plan.textContent = n ? '≈ ' + U.formatDuration(st.time + 45) + ' · ' + n + (n === 1 ? ' pen' : ' pens') + ' · ' + U.formatLength(st.drawLen) + ' of line · ' + st.lifts + ' lifts' : 'Nothing to plot yet';
+      U.clear(plan);
+      if (!n) plan.textContent = 'Nothing to plot yet';
+      // each figure stays on one line when the summary wraps
+      else ['≈ ' + U.formatDuration(st.time + 45), n + (n === 1 ? ' pen' : ' pens'), U.formatLength(st.drawLen) + ' of line', st.lifts + ' lifts']
+        .forEach((t, i) => plan.append(i ? ' · ' : '', h('span', null, t)));
       notes = [];
       if (!n) notes.push(['info', App.emptyPlanMessage(pl)]);
       else if (pl.clipped) notes.push(['warn', 'Some lines are outside the drawable area (shown in red) and will be clipped.']);

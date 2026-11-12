@@ -230,6 +230,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; m
 .plot-bar { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-top: 1px solid var(--border); background: var(--panel); }
 .plot-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
 .plot-sum { font-size: 12px; line-height: 1.35; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.plot-sum span { white-space: nowrap; }
 .plot-check { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border: 0; border-radius: 4px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .plot-check.ok { background: var(--ok-bg); color: var(--ok-fg); cursor: default; }
 .plot-check.info { background: var(--info-bg); color: var(--info-fg); }
