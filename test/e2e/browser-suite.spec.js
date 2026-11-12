@@ -11,7 +11,7 @@ test(`browser suite (fuzz n=${n}, seed=${seed})`, async ({ page, consoleProblems
   // ~0.4 s per fuzz scenario plus ~40 s of fixed suites, with headroom for slow CI machines
   test.setTimeout((120 + n * 2) * 1000);
   await page.goto('/tests/');
-  const result = await page.evaluate((opts) => window.runPenPlotTests(opts), { n, seed });
+  const result = await page.evaluate((opts) => window.runBrowserTests(opts), { n, seed });
   await testInfo.attach('result.json', { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
   console.log(
     `browser suite: ${result.pass} passed, ${result.fail} failed, ${result.stats.files} files, ` +

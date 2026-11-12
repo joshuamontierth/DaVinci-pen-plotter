@@ -1,4 +1,4 @@
-/* PenPlot Studio - shared utilities (DOM helpers, formatting, events, files). */
+/* DaVinci - shared utilities (DOM helpers, formatting, events, files). */
 (function (PP) {
   'use strict';
 
@@ -149,15 +149,15 @@
       return { count: files.length, where: null };
     },
 
-    /** gzip a string (CompressionStream) -> Uint8Array. Used for .penplot project files. */
+    /** gzip a string (CompressionStream) -> Uint8Array. Used for .davinci project files. */
     gzip(text) {
       return pipeBytes(new TextEncoder().encode(text), new CompressionStream('gzip'));
     },
-    /** Text of gzip bytes; plain (not gzip) bytes are read as UTF-8 text as they are. */
+    /** Text of gzip bytes; throws if they are not gzip. */
     async gunzipText(buffer) {
       const bytes = new Uint8Array(buffer);
-      const gz = bytes[0] === 0x1f && bytes[1] === 0x8b;
-      return new TextDecoder().decode(gz ? await pipeBytes(bytes, new DecompressionStream('gzip')) : bytes);
+      if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) throw new Error('not gzip data');
+      return new TextDecoder().decode(await pipeBytes(bytes, new DecompressionStream('gzip')));
     },
 
     /** Files in a ZIP archive: [{ name, data: Uint8Array }] (stored or deflated entries; folders skipped). */

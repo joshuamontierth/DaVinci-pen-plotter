@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - project state, layers, selection, undo/redo, autosave.
+ * DaVinci - project state, layers, selection, undo/redo, autosave.
  * Objects are immutable: every edit replaces the object, so undo snapshots are
  * cheap arrays of references.
  */
@@ -22,6 +22,7 @@
     { id: 'custom', name: 'Custom', w: 200, h: 150 },
   ];
 
+  const APP = 'DaVinci';
   const PEN_COLORS = ['#1a1a1a', '#1f5fd6', '#d63a2f', '#1d9e5a', '#8a3fd1', '#e38b12', '#d6358f', '#0f9fb0'];
 
   function defaultLayer(i) {
@@ -31,7 +32,7 @@
   function newProject() {
     const l = defaultLayer(0);
     return {
-      app: 'PenPlot Studio',
+      app: APP,
       format: 1,
       name: 'Untitled plot',
       layers: [l],
@@ -292,7 +293,7 @@
   S.serialize = function () {
     const p = S.project;
     return {
-      app: 'PenPlot Studio', format: 1, savedAt: new Date().toISOString(),
+      app: APP, format: 1, savedAt: new Date().toISOString(),
       name: p.name, layers: p.layers, activeLayerId: p.activeLayerId, paper: p.paper,
       objects: p.objects.map(o => {
         const c = {};
@@ -304,13 +305,13 @@
   };
 
   S.load = function (data, opts = {}) {
-    if (!data || !Array.isArray(data.layers) || !Array.isArray(data.objects)) throw new Error('This is not a PenPlot Studio project file.');
+    if (!data || data.app !== APP || !Array.isArray(data.layers) || !Array.isArray(data.objects)) throw new Error('This is not a DaVinci project file.');
     if (opts.history !== false) S.checkpoint();
     const base = newProject();
     const layers = data.layers.length ? data.layers.map((l, i) => Object.assign(defaultLayer(i), l)) : base.layers;
     const layerIds = new Set(layers.map(l => l.id));
     S.project = {
-      app: 'PenPlot Studio', format: 1,
+      app: APP, format: 1,
       name: data.name || 'Untitled plot',
       layers,
       objects: data.objects.filter(o => o && typeof o === 'object' && o.type).map(o => {

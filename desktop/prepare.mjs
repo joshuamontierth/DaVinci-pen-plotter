@@ -15,13 +15,16 @@ const out = path.join(bundle, 'app');
 // Everything the page loads at runtime, from src/. README.md (the credits and licence notes; vendor/ has its own
 // licence files) comes from the repository root. If index.html starts referencing another file or folder in src/,
 // add it here; the check at the bottom fails the build if something it references did not make it into the bundle.
-const ENTRIES = ['index.html', 'css', 'js', 'vendor'];
+const ENTRIES = ['index.html', 'css', 'js', 'vendor', 'assets'];
 const SOURCES = [...ENTRIES.map((name) => path.join(src, name)), path.join(root, 'README.md')];
 
 const JUNK = new Set(['.DS_Store', 'Thumbs.db', 'Desktop.ini']);
 
 await rm(bundle, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
+
+// The window and tray icons (installer/icons/, rendered from src/assets/davinci.svg by `npm run icons`)
+await cp(path.join(root, 'installer', 'icons'), path.join(bundle, 'icons'), { recursive: true });
 
 for (const from of SOURCES) {
   try {

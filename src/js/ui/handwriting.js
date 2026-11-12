@@ -1,4 +1,4 @@
-/* PenPlot Studio - "My Handwriting": draw your own single-stroke font. */
+/* DaVinci - "My Handwriting": draw your own single-stroke font. */
 (function (PP) {
   'use strict';
 

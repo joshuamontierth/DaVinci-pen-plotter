@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - design objects.
+ * DaVinci - design objects.
  * Every object has a transform (x, y, rotation, scaleX, scaleY) and local geometry
  * centered on (0, 0). Types: path, text, shape, pattern.
  * Objects are treated as immutable: edits replace the object (see state.js).

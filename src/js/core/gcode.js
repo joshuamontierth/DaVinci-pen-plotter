@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - printer profiles, G-code generation and calibration patterns.
+ * DaVinci - printer profiles, G-code generation and calibration patterns.
  *
  * Coordinate model
  *   Designs live in PEN coordinates: where the pen tip should touch the bed (mm,
@@ -22,7 +22,7 @@
   'use strict';
 
   const U = PP.U, G = PP.Geo, O = PP.Optimizer;
-  const APP = 'PenPlot Studio';
+  const APP = 'DaVinci';
   const VERSION = '1.0.0';
 
   // Pause warm-up (see pauseTemp in BAMBU_BASE): the X1/P1 presets use PAUSE_TEMP, no profile may exceed MAX

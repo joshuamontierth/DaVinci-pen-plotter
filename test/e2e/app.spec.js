@@ -7,7 +7,7 @@ test('boots with the header, tools, panels, canvas and welcome design', async ({
   await openApp(page);
 
   const header = page.locator('#header');
-  await expect(header.locator('.brand-name')).toHaveText('PenPlot Studio');
+  await expect(header.locator('.brand-name')).toHaveText('DaVinci');
   await expect(header.locator('.printer-select')).toHaveValue('bambu-x1c');
   await expect(header.getByRole('button', { name: 'Letter · portrait' })).toBeVisible();
   await expect(header.getByRole('button', { name: 'Download G-code' })).toBeVisible();
@@ -50,7 +50,7 @@ test('first launch opens the help dialog once', async ({ page, consoleProblems }
   await expect(help).toBeVisible();
   await expect(help.getByRole('tab', { name: 'Getting started' })).toHaveAttribute('aria-selected', 'true');
   await expect(help.getByText('Install the pen mount')).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('pp.seenHelp'))).toBe('true');
+  expect(await page.evaluate(() => localStorage.getItem('davinci.seenHelp'))).toBe('true');
   // the calibration guide lists the tests in order
   await help.getByRole('tab', { name: 'Calibration' }).click();
   for (const t of [

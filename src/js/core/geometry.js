@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - polyline geometry.
+ * DaVinci - polyline geometry.
  * A polyline is a flat array [x0, y0, x1, y1, ...] in millimetres, Y up.
  * Closed shapes repeat their first point at the end.
  */

@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - bed canvas: rendering, navigation, selection and drawing tools.
+ * DaVinci - bed canvas: rendering, navigation, selection and drawing tools.
  * World units are millimetres in PEN coordinates, Y up, origin = front-left of the bed.
  */
 (function (PP) {

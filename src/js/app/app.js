@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - application controller: profiles, plan building, object
+ * DaVinci - application controller: profiles, plan building, object
  * operations, header/toolbar, keyboard shortcuts, file handling.
  */
 (function (PP) {
@@ -329,9 +329,9 @@
       }
       S.reset();
     },
-    // .penplot = the project JSON, gzipped (opening also takes the older plain .penplot.json / .json)
+    // .davinci = the project JSON, gzipped
     async saveProject() {
-      const name = U.safeFilename(S.project.name, 'plot') + '.penplot';
+      const name = U.safeFilename(S.project.name, 'plot') + '.davinci';
       try {
         const r = await U.saveFiles([{ name, data: (await U.gzip(JSON.stringify(S.serialize()))).buffer, type: 'application/octet-stream' }]);
         if (!r) return;
@@ -340,10 +340,11 @@
       } catch (e) { PP.UI.toast('Could not save the project: ' + e.message, 'error'); }
     },
     async openProject(file) {
-      file = file || await U.pickFile('.penplot,.json,application/json');
+      file = file || await U.pickFile('.davinci');
       if (!file) return;
       try {
-        const data = JSON.parse(await U.gunzipText(await U.readFile(file, 'arraybuffer')));
+        let data;
+        try { data = JSON.parse(await U.gunzipText(await U.readFile(file, 'arraybuffer'))); } catch (e) { throw new Error('This is not a DaVinci project file.', { cause: e }); }
         const { dropped } = S.load(data);
         App.view.fit();
         PP.UI.toast('Opened "' + (S.project.name || file.name) + '"' + (dropped ? ' - skipped ' + dropped + ' damaged object(s)' : ''), dropped ? 'warn' : 'info');
@@ -404,7 +405,7 @@
       for (const f of files) {
         const n = f.name.toLowerCase();
         if (n.endsWith('.svg')) await App.files.importSVG(f);
-        else if (n.endsWith('.json') || n.endsWith('.penplot')) await App.files.openProject(f);
+        else if (n.endsWith('.davinci')) await App.files.openProject(f);
         else if (n.endsWith('.ttf') || n.endsWith('.otf') || n.endsWith('.woff')) await PP.UI.uploadFont(f);
         else if (/^image\//.test(f.type) || /\.(png|jpe?g|gif|bmp|webp)$/.test(n)) PP.UI.openImageTrace(f);
         else PP.UI.toast('Unsupported file: ' + f.name, 'warn');
@@ -475,7 +476,7 @@
     header.append(
       h('div', { class: 'brand' },
         h('span', { class: 'logo', html: '<svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="6" fill="currentColor"/><path d="M9 23c3-9 6-12 8-8s4 1 6-6" stroke="var(--panel)" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>' }),
-        h('span', { class: 'brand-name' }, 'PenPlot Studio')),
+        h('span', { class: 'brand-name' }, 'DaVinci')),
       nameInput,
       h('div', { class: 'hgroup' },
         UI.iconBtn('new', 'New project', () => App.files.newProject()),
@@ -754,7 +755,7 @@
       PP.Storage.setLocal('seenHelp', true);
       setTimeout(() => PP.UI.openHelp(), 400);
     }
-    // desktop app: a .penplot double-clicked in the file manager (at launch, or while the app is open)
+    // desktop app: a .davinci double-clicked in the file manager (at launch, or while the app is open)
     const desk = window.ppDesktop;
     if (desk && desk.takeOpenFile) {
       const open = (f) => { if (f) App.files.openProject(new File([f.data], f.name)); };

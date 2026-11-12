@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - STL read/write (binary and ASCII in, binary out).
+ * DaVinci - STL read/write (binary and ASCII in, binary out).
  * Triangles are a flat Float32Array [x0,y0,z0, x1,y1,z1, x2,y2,z2, ...] (9 numbers per triangle), in mm.
  */
 (function (PP) {
@@ -32,7 +32,7 @@
   }
 
   /** Write triangles as a binary STL (ArrayBuffer). Normals are computed from the winding. */
-  function write(tris, header = 'PenPlot Studio') {
+  function write(tris, header = 'DaVinci') {
     const n = tris.length / 9;
     const buf = new ArrayBuffer(84 + n * 50);
     const dv = new DataView(buf);

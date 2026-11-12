@@ -1,8 +1,8 @@
-/* PenPlot Studio - persistence (IndexedDB key/value with localStorage fallback). */
+/* DaVinci - persistence (IndexedDB key/value with localStorage fallback). */
 (function (PP) {
   'use strict';
 
-  const DB_NAME = 'penplot-studio';
+  const DB_NAME = 'davinci';
   const STORE = 'kv';
   let dbPromise = null;
 
@@ -31,7 +31,7 @@
     }));
   }
 
-  const LS_PREFIX = 'pp.kv.';
+  const LS_PREFIX = 'davinci.kv.';
 
   PP.Storage = {
     async get(key) {
@@ -52,10 +52,10 @@
     },
     // Small synchronous settings (profiles, UI prefs)
     getLocal(key, def) {
-      try { const v = localStorage.getItem('pp.' + key); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
+      try { const v = localStorage.getItem('davinci.' + key); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
     },
     setLocal(key, value) {
-      try { localStorage.setItem('pp.' + key, JSON.stringify(value)); } catch (e) { console.warn(e); }
+      try { localStorage.setItem('davinci.' + key, JSON.stringify(value)); } catch (e) { console.warn(e); }
     },
   };
 })(window.PP = window.PP || {});

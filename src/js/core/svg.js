@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - SVG path parsing, flattening, SVG import and export.
+ * DaVinci - SVG path parsing, flattening, SVG import and export.
  * Imported geometry is returned in millimetres with Y pointing UP.
  */
 (function (PP) {

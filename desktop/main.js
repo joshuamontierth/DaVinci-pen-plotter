@@ -1,19 +1,19 @@
 'use strict';
 
-// PenPlot Studio desktop shell. One window that serves the bundled static web app (desktop/bundle/app/, staged by
-// prepare.mjs) from a privileged custom scheme, app://penplot/. file:// is avoided on purpose: fonts.js skips
+// DaVinci desktop shell. One window that serves the bundled static web app (desktop/bundle/app/, staged by
+// prepare.mjs) from a privileged custom scheme, app://davinci/. file:// is avoided on purpose: fonts.js skips
 // local fetch() on file: pages and IndexedDB is unreliable there.
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, session, shell } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const APP_ID = 'com.joshuamontierth.penplotstudio';
+const APP_ID = 'com.joshuamontierth.davinci';
 const SCHEME = 'app';
-const HOST = 'penplot';
+const HOST = 'davinci';
 const ORIGIN = `${SCHEME}://${HOST}`;
 const APP_DIR = path.join(__dirname, 'bundle', 'app');
-const ICON = path.join(__dirname, 'build', 'icon.png');
+const ICON = path.join(__dirname, 'bundle', 'icons', '256x256.png');
 const PRELOAD = path.join(__dirname, 'preload.js');
 
 // Must run before the app is ready. standard + secure give the page a real, stable origin (IndexedDB,
@@ -45,7 +45,7 @@ const MIME = {
   '.md': 'text/plain; charset=utf-8',
 };
 
-/** True for app://penplot and anything under it. (Not `new URL().origin`: that is "null" for custom schemes.) */
+/** True for app://davinci and anything under it. (Not `new URL().origin`: that is "null" for custom schemes.) */
 function isAppUrl(url) {
   return typeof url === 'string' && (url === ORIGIN || url.startsWith(`${ORIGIN}/`));
 }
@@ -91,7 +91,7 @@ function openExternal(url) {
   }
 }
 
-// Only our own origin may ask for permissions, and only for these. Downloads (.gcode / .penplot.json / .svg) and
+// Only our own origin may ask for permissions, and only for these. Downloads (.gcode / .davinci / .svg) and
 // <input type=file> pickers are not permission-gated. local-fonts is window.queryLocalFonts() (system fonts for
 // the Text tab); fileSystem is the File System Access pickers; the clipboard ones are navigator.clipboard.
 const ALLOWED_PERMISSIONS = new Set(['local-fonts', 'fileSystem', 'clipboard-sanitized-write', 'clipboard-read']);
@@ -216,10 +216,10 @@ async function saveFiles(event, files, opts) {
   return { saved, dir };
 }
 
-// A project opened from the file manager (double-click on a .penplot): the path arrives on the command line, or in
+// A project opened from the file manager (double-click on a .davinci): the path arrives on the command line, or in
 // a second instance's command line. The page asks for the first one once it is ready (pp:take-open-file) and is
 // sent later ones (pp:open-file).
-const OPENABLE = /\.(penplot|json)$/i;
+const OPENABLE = /\.davinci$/i;
 const fileArg = (argv, cwd) => {
   const a = argv
     .slice(1)
@@ -235,7 +235,7 @@ async function readOpenFile(file) {
   return { name: path.basename(file), data: await fs.readFile(file) };
 }
 
-// Links to the outside world open in the system browser; the window never leaves app://penplot/.
+// Links to the outside world open in the system browser; the window never leaves app://davinci/.
 app.on('web-contents-created', (_event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
@@ -295,7 +295,7 @@ function createWindow() {
     minHeight: 700,
     show: false, // shown on ready-to-show: no white flash before the dark UI paints
     backgroundColor: '#0e1115',
-    title: 'PenPlot Studio', // replaced by the page's <title> as soon as it loads
+    title: 'DaVinci', // replaced by the page's <title> as soon as it loads
     icon: process.platform === 'darwin' ? undefined : ICON,
     webPreferences: {
       preload: PRELOAD,
@@ -313,7 +313,7 @@ function createWindow() {
   win.once('ready-to-show', () => win.show());
   win.webContents.on('did-fail-load', (_e, code, description, url, isMainFrame) => {
     if (!isMainFrame) return;
-    console.error(`PenPlot Studio: failed to load ${url}: ${description} (${code})`);
+    console.error(`DaVinci: failed to load ${url}: ${description} (${code})`);
     if (!win.isDestroyed()) win.show();
   });
   win.loadURL(`${ORIGIN}/index.html`);
@@ -332,7 +332,7 @@ if (!app.requestSingleInstanceLock()) {
     if (f)
       readOpenFile(f)
         .then((file) => mainWindow && mainWindow.webContents.send('pp:open-file', file))
-        .catch((e) => console.error('PenPlot Studio: ' + e.message));
+        .catch((e) => console.error('DaVinci: ' + e.message));
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
   });

@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - animated draw preview (simulates the plot in path order,
+ * DaVinci - animated draw preview (simulates the plot in path order,
  * showing travel moves, the pen tip and the nozzle/toolhead position).
  */
 (function (PP) {

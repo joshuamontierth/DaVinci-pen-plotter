@@ -1,8 +1,8 @@
 {
-  "name": "penplot-studio",
+  "name": "davinci",
   "version": "1.0.0",
   "private": true,
-  "description": "Pen-plotter G-code generator for the Bambu Lab X1 Carbon (static, no-build web app)",
+  "description": "DaVinci: pen-plotter G-code generator for Bambu Lab printers (static, no-build web app)",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
@@ -25,6 +25,7 @@
     "test:e2e:ui": "playwright test --ui",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run test:e2e",
     "vendor": "node scripts/vendor.mjs",
+    "icons": "node scripts/icons.mjs",
     "desktop:install": "npm --prefix desktop ci",
     "desktop:prepare": "npm --prefix desktop run stage",
     "desktop:start": "npm --prefix desktop start",

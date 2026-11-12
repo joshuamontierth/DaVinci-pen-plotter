@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio test harness, shared by the browser runner (index.html -> tests.js) and the
+ * DaVinci test harness, shared by the browser runner (index.html -> tests.js) and the
  * Node/Vitest suites (test/unit/*.test.js). It has no DOM output of its own: everything reports
  * through a runner's check function, so the same seed builds the same scenario in both places.
  *

@@ -1,4 +1,4 @@
-/* PenPlot Studio - UI building blocks: icons, toasts, modals, form controls. */
+/* DaVinci - UI building blocks: icons, toasts, modals, form controls. */
 (function (PP) {
   'use strict';
 

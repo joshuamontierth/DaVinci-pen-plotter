@@ -54,7 +54,7 @@ function run(cmd, args, cwd) {
   return r.stdout;
 }
 
-const tmp = mkdtempSync(join(tmpdir(), 'penplot-vendor-'));
+const tmp = mkdtempSync(join(tmpdir(), 'davinci-vendor-'));
 try {
   for (const pkg of PACKAGES) {
     const work = join(tmp, pkg.dest);

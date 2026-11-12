@@ -1,4 +1,4 @@
-/* PenPlot Studio - right panel: selection properties, layers, paper, plotter settings, plot summary. */
+/* DaVinci - right panel: selection properties, layers, paper, plotter settings, plot summary. */
 (function (PP) {
   'use strict';
 
@@ -322,7 +322,7 @@
         row.addEventListener('dragstart', (e) => {
           dragId = L.id; busy = 'drag:' + L.id;
           e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('application/x-penplot-layer', L.id);
+          e.dataTransfer.setData('application/x-davinci-layer', L.id);
           row.classList.add('dragging');
         });
         // dragend can arrive late: only end this drag's hold, never a color pick or rename that started since

@@ -5,10 +5,10 @@ import { readFile } from 'node:fs/promises';
 
 /**
  * Open the editor and wait until the welcome design is on the bed and its fonts are loaded.
- * By default the first-launch help dialog is suppressed (App.init reads `pp.seenHelp` as JSON).
+ * By default the first-launch help dialog is suppressed (App.init reads `davinci.seenHelp` as JSON).
  */
 export async function openApp(page, { skipHelp = true } = {}) {
-  if (skipHelp) await page.addInitScript(() => localStorage.setItem('pp.seenHelp', 'true'));
+  if (skipHelp) await page.addInitScript(() => localStorage.setItem('davinci.seenHelp', 'true'));
   await page.goto('/');
   await page.waitForFunction(() => {
     const P = window.PP;

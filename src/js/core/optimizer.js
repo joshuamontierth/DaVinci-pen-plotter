@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - path preparation, travel optimisation and time estimation.
+ * DaVinci - path preparation, travel optimisation and time estimation.
  */
 (function (PP) {
   'use strict';

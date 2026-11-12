@@ -1,9 +1,9 @@
 /*
- * PenPlot Studio browser test runner (open /tests/ via `npm start`, or run headless with
+ * DaVinci browser test runner (open /tests/ via `npm start`, or run headless with
  * `npm run test:e2e`). The checks themselves live in harness.js, which the Node suites share.
  *
  * Programmatic use (Playwright, devtools):
- *   await runPenPlotTests({ n: 200, seed: 1 })  -> { pass, fail, failures, stats, secs }
+ *   await runBrowserTests({ n: 200, seed: 1 })  -> { pass, fail, failures, stats, secs }
  *   await replayScenario(<rng seed>)            -> { P, prefs, plan, res, sim, mismatch }
  */
 (function () {
@@ -21,11 +21,11 @@
     logEl.scrollTop = logEl.scrollHeight;
   }
   function mark(step) {
-    try { localStorage.setItem('pp.testTrace', JSON.stringify({ step, at: new Date().toISOString() })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('davinci.testTrace', JSON.stringify({ step, at: new Date().toISOString() })); } catch (e) { /* ignore */ }
   }
   function updSummary(extra) {
     const { pass, fail, failures } = R;
-    try { localStorage.setItem('pp.testSummary', JSON.stringify({ pass, fail, extra: extra || '', failures: failures.slice(0, 40) })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('davinci.testSummary', JSON.stringify({ pass, fail, extra: extra || '', failures: failures.slice(0, 40) })); } catch (e) { /* ignore */ }
     sumEl.innerHTML = '<span class="pass">' + pass + ' passed</span> • <span class="' + (fail ? 'fail' : 'pass') + '">' + fail + ' failed</span>' + (extra ? ' • ' + extra : '');
   }
 
@@ -119,7 +119,7 @@
   }
 
   document.getElementById('run').addEventListener('click', () => runAll());
-  window.runPenPlotTests = runAll;
+  window.runBrowserTests = runAll;
   window.replayScenario = replay;
   window.__testUtils = T;
 })();

@@ -1,4 +1,4 @@
-/* PenPlot Studio - image tracing dialog (raster image -> pen paths). */
+/* DaVinci - image tracing dialog (raster image -> pen paths). */
 (function (PP) {
   'use strict';
 

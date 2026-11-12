@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - fonts and text layout.
+ * DaVinci - fonts and text layout.
  *  - Hershey single-stroke fonts (JSON) and EMS/Hershey SVG fonts from the hersheytext
  *    npm package: the local copy in vendor/ first (works offline), then jsDelivr.
  *  - "My Handwriting": a stroke font the user draws themselves (stored locally).
@@ -23,7 +23,7 @@
   const LOCAL_FETCH = typeof location === 'undefined' || location.protocol !== 'file:';
   const HERSHEY_BASES = [LOCAL_FETCH && APP_ROOT + 'vendor/hersheytext/', 'https://cdn.jsdelivr.net/npm/hersheytext@2.0.0/'].filter(Boolean);
   const OPENTYPE_URLS = [APP_ROOT + 'vendor/opentype/opentype.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js'];
-  const HAND_KEY = 'pp.handwriting.v1';
+  const HAND_KEY = 'davinci.handwriting';
   const LINE_HEIGHT = 1.75; // in cap-height units
   const FALLBACK_FONT = 'h:futural';
 

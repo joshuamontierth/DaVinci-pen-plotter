@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - pen-holder bore resizer.
+ * DaVinci - pen-holder bore resizer.
  *
  * Changes the diameter of the round pen bore of a printed pen-holder part (cartridge, spring) without scaling
  * anything else: the old bore is filled with a plug and a new bore is cut on the same axis. Uses manifold-3d

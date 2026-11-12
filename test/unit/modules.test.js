@@ -39,6 +39,7 @@ describe('project loading', () => {
   it('drops objects whose geometry cannot be built and keeps the rest', () => {
     const S = window.PP.Store;
     const { dropped } = S.load({
+      app: 'DaVinci',
       layers: [{ id: 'a', name: 'x' }],
       objects: [
         { type: 'path', layerId: 'a' }, // no paths: used to break every render

@@ -1,4 +1,4 @@
-/* PenPlot Studio - left panel: Text, Image, Patterns, Import tabs (drawing tools are in the tool strip). */
+/* DaVinci - left panel: Text, Image, Patterns, Import tabs (drawing tools are in the tool strip). */
 (function (PP) {
   'use strict';
 

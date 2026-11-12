@@ -26,8 +26,8 @@ const linuxArgs = process.platform === 'linux' ? ['--no-sandbox'] : [];
 function launchOptions() {
   if (packaged) {
     const exe = win
-      ? join(ROOT, 'dist', 'win-unpacked', 'PenPlot Studio.exe')
-      : join(ROOT, 'dist', 'linux-unpacked', 'penplot-studio');
+      ? join(ROOT, 'dist', 'win-unpacked', 'DaVinci.exe')
+      : join(ROOT, 'dist', 'linux-unpacked', 'davinci');
     if (!existsSync(exe)) throw new Error('Built app not found at ' + exe + ' - run `npm run desktop:dist` first.');
     return { executablePath: exe, args: linuxArgs };
   }
@@ -43,7 +43,7 @@ const check = (name, ok, detail = '') => {
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail ? ' - ' + detail : ''));
 };
 
-const SAVE_DIR = mkdtempSync(join(tmpdir(), 'penplot-smoke-'));
+const SAVE_DIR = mkdtempSync(join(tmpdir(), 'davinci-smoke-'));
 const app = await electron.launch({
   ...launchOptions(),
   env: { ...process.env, PP_TEST_SAVE_DIR: SAVE_DIR },
@@ -62,13 +62,13 @@ try {
     timeout: 30_000,
   });
 
-  check('loads app://penplot/index.html', page.url().startsWith('app://penplot/'), page.url());
-  check('window title', (await page.title()) === 'PenPlot Studio', await page.title());
+  check('loads app://davinci/index.html', page.url().startsWith('app://davinci/'), page.url());
+  check('window title', (await page.title()) === 'DaVinci', await page.title());
   const stamp = await page.evaluate(() => globalThis.document.querySelector('meta[name="pp-build"]')?.content || '');
   check('build is stamped with its commit', /^[0-9a-f]{7,}/.test(stamp), stamp);
 
   const fonts = await page.evaluate(async () => {
-    const r = await fetch('app://penplot/vendor/hersheytext/hersheytext.min.json');
+    const r = await fetch('app://davinci/vendor/hersheytext/hersheytext.min.json');
     return { status: r.status, n: r.ok ? Object.keys(await r.json()).length : 0 };
   });
   check('vendored fonts load offline', fonts.status === 200 && fonts.n > 10, JSON.stringify(fonts));
@@ -82,9 +82,9 @@ try {
   check('installed fonts are available', sys.api && sys.state === 'granted' && sys.n > 0, JSON.stringify(sys));
 
   const storage = await page.evaluate(async () => {
-    localStorage.setItem('pp.smoke', '1');
+    localStorage.setItem('davinci.smoke', '1');
     await PP.Storage.set('smoke', { ok: true });
-    return localStorage.getItem('pp.smoke') === '1' && (await PP.Storage.get('smoke')).ok === true;
+    return localStorage.getItem('davinci.smoke') === '1' && (await PP.Storage.get('smoke')).ok === true;
   });
   check('localStorage and IndexedDB work', storage);
 
@@ -140,7 +140,7 @@ try {
 
   // a project for the "open from the file manager" launch below
   const project = await page.evaluate(() => ({ ...PP.Store.serialize(), name: 'Smoke project' }));
-  writeFileSync(join(SAVE_DIR, 'smoke.penplot'), gzipSync(JSON.stringify(project)));
+  writeFileSync(join(SAVE_DIR, 'smoke.davinci'), gzipSync(JSON.stringify(project)));
 
   const isolated = await page.evaluate(() => typeof require === 'undefined' && typeof process === 'undefined');
   check('renderer has no Node access', isolated);
@@ -151,11 +151,11 @@ try {
   await app.close();
 }
 
-// Double-clicking a .penplot starts the app with the file on the command line
+// Double-clicking a .davinci starts the app with the file on the command line
 const opts = launchOptions();
 const second = await electron.launch({
   ...opts,
-  args: [...opts.args, join(SAVE_DIR, 'smoke.penplot')],
+  args: [...opts.args, join(SAVE_DIR, 'smoke.davinci')],
   timeout: 60_000,
 });
 try {
@@ -168,7 +168,7 @@ try {
       () => 'Smoke project',
       (e) => String(e.message).split('\n')[0],
     );
-  check('a .penplot on the command line opens', name === 'Smoke project', name);
+  check('a .davinci on the command line opens', name === 'Smoke project', name);
 } finally {
   await second.close();
   rmSync(SAVE_DIR, { recursive: true, force: true });

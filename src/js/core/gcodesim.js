@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - G-code simulator / safety checker.
+ * DaVinci - G-code simulator / safety checker.
  *
  * Replays a G-code file on a virtual printer (nozzle position, bed height, feed
  * rate, pen holder attached or not) and reports anything that could crash the
@@ -138,7 +138,7 @@
     };
 
     const doPause = (ln, kind) => {
-      // PenPlot's generator marks each pause with "; PP_PAUSE <action>" right before it; other files fall back to
+      // gcode.js marks each pause with "; PP_PAUSE <action>" right before it; other files fall back to
       // reading the human comment (which a layer name can mislead)
       const mk = /^PP_PAUSE (attach|swap|remove|inspect)$/.exec(lastComment);
       const removing = mk ? mk[1] === 'remove' : /remove the pen holder/i.test(lastComment);

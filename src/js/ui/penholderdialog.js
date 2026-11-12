@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio - "Download pen mount" dialog: the mount's pen cartridge and spring with their pen bore resized for
+ * DaVinci - "Download pen mount" dialog: the mount's pen cartridge and spring with their pen bore resized for
  * a measured pen (js/core/penholder.js), and the printer's attachment unchanged, saved together.
  *
  * The parts are the mount designer's files (Falu's "Modular System for A1, P1 & X1 Series" on MakerWorld). Its
@@ -208,7 +208,7 @@
       const pen = U.fmt(st.pen, 2);
       const out = RESIZED.filter(r => want[r.id] && outs[r.id]).map(r => ({
         name: r.label + ' - ' + pen + ' mm pen.stl',
-        data: PP.STL.write(outs[r.id].tris, 'PenPlot Studio pen mount, ' + pen + ' mm pen'),
+        data: PP.STL.write(outs[r.id].tris, 'DaVinci pen mount, ' + pen + ' mm pen'),
         type: 'model/stl',
       }));
       if (want.attachment && files[kind]) out.push({ name: ATTACHMENTS[kind].save, data: files[kind].buffer, type: 'model/stl' });
