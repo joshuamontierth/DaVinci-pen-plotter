@@ -1,10 +1,10 @@
 ; HEADER_BLOCK_START
-; DaVinci 1.0.0
+; DaVinci 2.0.0
 ; model printing time: 3s; total estimated time: 48s
 ; total layer number: 1
 ; HEADER_BLOCK_END
 ; ============================================================
-; DaVinci 1.0.0 - pen plotter G-code
+; DaVinci 2.0.0 - pen plotter G-code
 ; Generated: 2026-01-01 00:00:00 UTC
 ; Design: square
 ; Printer profile: Bambu Lab X1 Carbon

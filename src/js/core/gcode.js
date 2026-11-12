@@ -23,7 +23,7 @@
 
   const U = PP.U, G = PP.Geo, O = PP.Optimizer;
   const APP = 'DaVinci';
-  const VERSION = '1.0.0';
+  const VERSION = '2.0.0';
 
   // Pause warm-up (see pauseTemp in BAMBU_BASE): the X1/P1 presets use PAUSE_TEMP, no profile may exceed MAX
   const PAUSE_TEMP = 90, MAX_PAUSE_TEMP = 90;
