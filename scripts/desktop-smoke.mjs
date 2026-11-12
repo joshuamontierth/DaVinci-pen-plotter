@@ -70,12 +70,29 @@ try {
 
   // the menus are the window's own (the page sends them over), and the page's menu bar is hidden
   const menuLabels = () => app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.map((i) => i.label));
+  const enabled = (id) =>
+    app.evaluate(({ Menu }, itemId) => Menu.getApplicationMenu().getMenuItemById(itemId).enabled, id);
   await page.waitForTimeout(300);
   const labels = await menuLabels();
   check(
     'native menu: File, Edit, View, Printer, Help',
     labels.join() === '&File,&Edit,&View,&Printer,&Help' && (await page.locator('#menubar').isHidden()),
     labels.join(' '),
+  );
+  // the first-launch help opens by itself; while it is open only the Help menu works
+  await page
+    .getByRole('dialog')
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
+  await page.waitForTimeout(200);
+  const whileModal = [await enabled('save'), await enabled('helpStart')];
+  while (await page.getByRole('dialog').count()) await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  const afterModal = await enabled('save');
+  check(
+    'native menu: only Help while a dialog is open',
+    whileModal[0] === false && whileModal[1] === true && afterModal === true,
+    JSON.stringify({ whileModal, afterModal }),
   );
   const clickMenu = (id) =>
     app.evaluate(({ Menu }, itemId) => {

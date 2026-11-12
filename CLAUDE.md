@@ -58,7 +58,7 @@ each step as pass or fail, with the last ~30 lines of output for any failure:
    `dist/win-unpacked/`.
    - If electron-builder fails while extracting `winCodeSign` with a symlink-privilege error, enable Windows
      Developer Mode (Settings → System → For developers) or use an elevated terminal, then retry.
-5. `npm run desktop:test -- --packaged`: expect `18/18 checks passed (packaged app, win32)`.
+5. `npm run desktop:test -- --packaged`: expect `19/19 checks passed (packaged app, win32)`.
 6. `git status` must show no changes. If the build or tests modified tracked files, report which ones.
 
 Windows SmartScreen warns about the unsigned .exe. That's expected until code signing is set up.

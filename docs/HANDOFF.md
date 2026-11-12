@@ -609,7 +609,7 @@ Record every answer. They settle the assumptions in §3.
       plus the app) installs per user: desktop app (menu entry, icons, `application/x-davinci`), web server
       (`davinci-server.service`, a systemd user unit) or both, and `uninstall.sh`. Also an AppImage and a .deb
       (with the unit, off by default).
-    - **Verified:** `npm run check`; the packaged smoke test (18 checks) under Xvfb; the Linux installer, .deb and
+    - **Verified:** `npm run check`; the packaged smoke test (19 checks) under Xvfb; the Linux installer, .deb and
       AppImage in a throwaway systemd container (install, serve on the LAN address, reinstall, uninstall to
       nothing); the Windows installer under Wine (silent install with the server, Run key, file type, server
       answering, reinstall keeping the choice, uninstall). Wine has no real firewall or PowerShell, so the firewall
