@@ -1,7 +1,7 @@
-# PenPlot Studio
+# DaVinci
 
 A pen-plotter G-code generator for **Bambu Lab** printers: the X1 Carbon, X1/X1E, P1S/P1P and A1, plus a generic
-Marlin profile. A pen holder clips onto the toolhead, and PenPlot Studio turns text, drawings, images and patterns
+Marlin profile. A pen holder clips onto the toolhead, and DaVinci turns text, drawings, images and patterns
 into plain G-code that you print from the SD card. There are no firmware changes. It's modelled on
 [3dplotter.xyz](https://3dplotter.xyz) and set up for Falu's pen mount
 ([MakerWorld 2029113](https://makerworld.com/en/models/2029113-modular-system-for-a1-p1-x1-series)). Workflow:
@@ -10,12 +10,45 @@ into plain G-code that you print from the SD card. There are no firmware changes
 You design on a to-scale model of the plate and preview the **simulated G-code**. Every file passes a safety check
 before you can download it.
 
-> **Work in progress.** PenPlot Studio is under active development and has been tried on one X1 Carbon (dry runs
-> and the pause behaviour), not on every printer it lists. Watch the printer while it plots, keep a hand near Pause,
-> and read [HANDOFF.md](HANDOFF.md) before your first plot.
+> **Work in progress.** DaVinci is under active development and has been tried on one X1 Carbon (dry runs and the
+> pause behaviour), not on every printer it lists. Watch the printer while it plots, keep a hand near Pause, and
+> read [docs/HANDOFF.md](docs/HANDOFF.md) before your first plot.
 >
 > **Alpha:** the **pen-holder resizer** (Download pen mount) and **cutting** are early experiments. Their output has
 > not been proven on a printer yet; see [Alpha features](#alpha-features).
+
+## Install
+
+Download the installer for your computer from [Releases](https://github.com/joshuamontierth/DaVinci-pen-plotter/releases/latest).
+
+- **Windows:** run `davinci-<version>-win-x64-setup.exe`. Choose just you or everyone, then the folder. The next page
+  offers **Web server mode** (below). The installer is unsigned, so SmartScreen warns about it, and Windows 11 Smart
+  App Control may block it.
+- **Linux (x64):** run `sh davinci-<version>-linux-x64-setup.sh`. It installs for your user (no root needed) and asks
+  what you want: the desktop app, the web server, or both. `--app`, `--server` or `--both` (with `--port N`) skip
+  the question, and `sh ~/.local/share/davinci/uninstall.sh` removes everything it installed. There's also a
+  `.deb` (`sudo apt install ./davinci_<version>_amd64.deb`) and an AppImage that runs without installing.
+
+DaVinci opens `.davinci` project files from the file manager. Projects and settings stay on your computer.
+
+### Web server mode
+
+The web server serves DaVinci to browsers on your network, so a laptop, tablet or phone can use it without
+installing anything. It only serves the app: designs, settings and saved files stay in each browser.
+
+- **Windows:** tick **Web server mode** in the installer and pick a port (8791 by default). DaVinci then runs in the
+  background whenever you sign in, with a tray icon to open or stop it, and Windows Firewall lets in other computers
+  on private networks only. The last page shows the address. Running the installer again changes the choice;
+  uninstalling removes the background task and the firewall rule.
+- **Linux:** choose the web server (or both) in `setup.sh`. It adds `davinci-server.service`, a systemd user service
+  that starts when you log in, and prints the addresses. `loginctl enable-linger $USER` keeps it running while you
+  are logged out; with ufw on, `sudo ufw allow 8791/tcp`. With the .deb, turn it on with
+  `systemctl --user enable --now davinci-server`.
+- **By hand:** `davinci --serve [--port N] [--host 0.0.0.0]`. It listens on 127.0.0.1 unless `--host 0.0.0.0` is
+  given, and prints the network addresses.
+
+Over plain `http://` from another computer, browsers keep a few things for secure pages: Save writes a download
+instead of updating the same file, and **Installed fonts** isn't available.
 
 ## Features
 
@@ -25,7 +58,7 @@ before you can download it.
 | **Draw** | Freehand, line, polyline, smooth curve, rectangle, ellipse, polygon, star and eraser in the tool strip. The active tool's settings sit in a small bar on the canvas |
 | **Image** | Trace a picture as Outline, Center line, Edges, Contours, Photo hatch, Squiggle, Spiral or Stipple, with a live preview |
 | **Patterns** | 23 generators (spirograph, harmonograph, mandala, guilloche, Hilbert, maze, flow field, topo...) |
-| **Import / export** | SVG import (curves, arcs, transforms; each stroke color on its own layer), SVG export, and `.penplot` project files (gzipped JSON; older `.penplot.json` files still open) |
+| **Import / export** | SVG import (curves, arcs, transforms; each stroke color on its own layer), SVG export, and `.davinci` project files (gzipped JSON). Save writes back to the same file where the browser allows it |
 | **Editing** | Move, scale and rotate handles, mirror, align, fit to paper, hatch fill, convert to path, combine, lock, undo/redo, autosave |
 | **Layers = pens** | One file with a pause for each pen change, or one file per layer. Per-layer pen height and speed, kept in a safe window |
 | **Preview** | Animates the simulated G-code: strokes, travel, the nozzle and toolhead position, and a safety badge |
@@ -34,8 +67,9 @@ before you can download it.
 | **Printers** | Bambu Lab X1 Carbon, X1/X1E and P1S/P1P (Falu mount), A1 (3dplotter.xyz holder), and a generic Marlin profile, each with its own safe zone and pauses |
 | **Pauses** | Attach the pen at the first pause; on the X1/P1 the nozzle is warmed to 90 °C first, so Resume takes about 4 s instead of over a minute |
 | **Pen mount** *(alpha)* | Resizes the pen tube of the mount's cartridge and spring for your pen's measured diameter (see below) |
-| **Desktop app** | Windows and Linux (Electron): works offline, uses your system fonts, native save dialogs, opens `.penplot` files from the file manager |
-| **Look** | Light and dark themes that follow your system |
+| **Desktop app** | Windows and Linux (Electron): works offline, uses your system fonts, native menus and save dialogs, opens `.davinci` files from the file manager |
+| **Web server** | Serve the app to browsers on your network, set up by the installer (see [Web server mode](#web-server-mode)) |
+| **Look** | A menu bar (File, Edit, View, Printer, Help) with the usual shortcuts, and light and dark themes that follow your system |
 
 ## Alpha features
 
@@ -43,7 +77,7 @@ These work in the software and are tested there, but the results haven't been ch
 
 ### Pen holder resizer (Download pen mount)
 
-Printer settings → Pen mount → **Download pen mount** takes the mount's pen cartridge and spring and changes only
+File → **Download pen mount** (also in Printer settings → Pen mount) takes the mount's pen cartridge and spring and changes only
 their pen tube. Enter your pen's measured diameter, and the tool cuts a new bore while keeping at least 1.2 mm of
 wall. It shows the largest pen the parts support and saves the two resized parts, plus the attachment for your
 printer (X1/P1 or A1), ready to print. The resized parts have not been printed and fitted yet.
@@ -64,23 +98,20 @@ A layer can be the **cut layer**: a drag knife (Roland-type blades) cuts it afte
 to swap holders. The G-code corrects for the blade trailing behind the holder: it swivels at corners, cuts past the
 start so shapes close (overcut), and cuts holes before the shapes around them. Calibrate has a cut-depth test and a
 blade-offset test, and the export warns about open paths, one-stroke fonts and tiny pieces. **No knife mount exists
-yet, and nothing has been cut.** See [docs/cutting.md](https://github.com/joshuamontierth/penplot-studio/blob/cutting/docs/cutting.md) on that branch.
+yet, and nothing has been cut.** See [docs/cutting.md](https://github.com/joshuamontierth/DaVinci-pen-plotter/blob/cutting/docs/cutting.md) on that branch.
 
 ### Save to SD card (branch `removable-drive`)
 
 In the desktop app, the export can save straight to an SD card or USB drive and eject it, like Cura. Not yet tried
 with a real card.
 
-## Running it
+## Running from source
 
-- **Desktop app:** build it with `npm run desktop:dist` (see [Desktop app](#desktop-app)), or use a release build if
-  one is published.
-- **In a browser:** `npm start` (Node) or `python serve.py` serves http://127.0.0.1:8791 and opens it. On Windows you
-  can double-click `Start PenPlot Studio.bat`. Double-clicking `index.html` also works, but then fonts load from a
-  CDN and the pen-mount tool is unavailable.
-
-Fonts and libraries are bundled in `vendor/`, so with a local server or the desktop app nothing needs the internet.
-Work autosaves in the app; **Save project** writes a `.penplot` file.
+`npm start` serves `src/` at http://127.0.0.1:8791 and opens it (Node 24, no dependencies needed for this):
+`node server/serve.mjs` does the same, with `--host 0.0.0.0` for the network. Opening `src/index.html` directly
+also works, but then fonts load from a CDN and the pen-mount tool is unavailable. Fonts and libraries are bundled in
+`src/vendor/`, so with a server or the desktop app nothing needs the internet. Work autosaves in the app; **File →
+Save** writes a `.davinci` file.
 
 ## X1C defaults
 
@@ -116,7 +147,7 @@ G1 Z80                      ; bed down at the end (no end pause by default: remo
 G1 X152 Y250                ; toolhead to the back
 ```
 
-## The safety check (`js/core/gcodesim.js`)
+## The safety check (`src/js/core/gcodesim.js`)
 
 It replays the file on a virtual printer and refuses it, or warns, when:
 
@@ -134,8 +165,8 @@ It also rebuilds every stroke and travel move for the preview.
 
 ## Development
 
-The app has no build step: `js/` is plain browser scripts loaded in order by `index.html`. The tooling runs on
-**Node 24 LTS** on Windows and Linux.
+The app has no build step: `src/js/` is plain browser scripts loaded in order by `src/index.html`. The tooling runs
+on **Node 24 LTS** on Windows and Linux.
 
 | Setup | Linux (Ubuntu) | Windows |
 |---|---|---|
@@ -146,45 +177,47 @@ The app has no build step: `js/` is plain browser scripts loaded in order by `in
 | Command | What it does |
 |---|---|
 | `npm run dev` | Dev server with live reload |
-| `npm start` | Dev server without live reload (`-- --port 9000`, `-- --no-open`) |
+| `npm start` | Server without live reload (`-- --port 9000`, `-- --no-open`, `-- --host 0.0.0.0`) |
 | `npm test` | Vitest: unit tests, the shared suites and a 30-scenario seeded fuzz, in Node |
 | `npm run test:fuzz` | 2000 fuzz scenarios (`FUZZ_N` / `FUZZ_SEED` override the counts) |
 | `npm run test:e2e` | Playwright: UI tests and the full browser suite in Chromium, offline |
 | `npm run lint` / `format` / `typecheck` | ESLint, Prettier, `tsc --checkJs` on the core modules |
 | `npm run check` | Everything CI runs |
-| `npm run vendor` | Re-download the pinned fonts and libraries into `vendor/` |
+| `npm run vendor` | Re-download the pinned fonts and libraries into `src/vendor/` |
+| `npm run icons` | Render the icon (`src/assets/davinci.svg`) into the installers' PNG sizes and `.ico` |
 
-- **Shared suites:** `tests/harness.js` holds the suites, used by both the browser page (`tests/index.html`) and
-  Vitest. A failing fuzz seed replays in the browser at `/tests/` with `await replayScenario(<seed>)`.
+- **Shared suites:** `test/browser/harness.js` holds the suites, used by both the browser page (`test/browser/`,
+  served at `/tests/`) and Vitest. A failing fuzz seed replays in the browser at `/tests/` with
+  `await replayScenario(<seed>)`.
 - **Golden file:** `test/unit/__snapshots__/x1c-square.gcode`. If a deliberate change alters the G-code, review the
   diff and run `npx vitest -u`.
 - **CI:** runs everything on Ubuntu and Windows, plus a nightly deep fuzz.
 
-### Desktop app
+### Desktop app and installers
 
-`desktop/` wraps the app in Electron and serves it from `app://penplot/`. Run `npm run desktop:install` once, then
-`npm run desktop:start` (a dev window) or `npm run desktop:dist`.
-- **Output:** installers for the OS you're on, in `desktop/dist/`. Linux gets an AppImage and a `.tar.gz`; Windows
-  gets a portable `.exe` and an installer.
-- **`.penplot` files:** the Windows installer registers the extension.
-- **Signing:** builds are unsigned. SmartScreen warns, and Windows 11 Smart App Control may block them until they're
-  signed.
-- **Ubuntu 24.04+:** the AppImage drops to `--no-sandbox` automatically.
+`desktop/` wraps the app in Electron and serves it from `app://davinci/`; `installer/` holds the packaging. Run
+`npm run desktop:install` once, then `npm run desktop:start` (a dev window) or `npm run desktop:dist`.
+- **Output** in `dist/`, for the OS you're on: `davinci-<version>-win-x64-setup.exe` on Windows;
+  `davinci-<version>-linux-x64-setup.sh`, the AppImage and the `.deb` on Linux.
+- **Checks:** `npm run desktop:test -- --packaged` smoke-tests the built app (menus, saving, fonts, storage, G-code,
+  `--serve`). `installer/windows/test-installer.ps1` installs and uninstalls the Windows installer with the web
+  server; CI runs both, plus the Linux installer.
+- **Signing:** builds are unsigned.
+- **Ubuntu 24.04+:** the AppImage and the `davinci` command from `setup.sh` fall back to `--no-sandbox` when Chromium's
+  sandbox is unavailable.
 
 ## Files
 
 ```
-index.html  css/styles.css
-js/core/    util, geometry, svg, storage, fonts, optimizer, gcode, gcodesim, patterns, imagetrace, stl, penholder
-js/app/     state (undo/redo, autosave), objects, canvas (+tools), preview, app (controller)
-js/ui/      ui-core, panels-left, panels-right, modals, imagedialog, handwriting, penholderdialog
-vendor/     Hershey fonts (hersheytext), opentype.js and manifold-3d, with their licenses
-tests/      browser test page: index.html, harness.js (shared suites), tests.js (runner)
-test/unit/  Vitest suites (Node + jsdom) and the golden G-code file
-e2e/        Playwright specs (UI + headless browser suite)
-scripts/    serve.mjs (dev server), vendor.mjs, desktop-smoke.mjs
-desktop/    Electron shell (main.js, preload.js, prepare.mjs, builder config)
-HANDOFF.md  detailed status, hardware facts, open questions
+src/          the web app: index.html, css/, js/ (core/, app/, ui/), vendor/, assets/ (icon), types/
+server/       serve.mjs: the web server (npm start, the desktop app's --serve, the tests)
+desktop/      Electron shell: main.js, menu.js (native menu), server.js (--serve), preload.js, prepare.mjs
+installer/    packaging: electron-builder.config.cjs, windows/ (NSIS web server page), linux/ (setup.sh, .deb unit),
+              icons/ (rendered from src/assets/davinci.svg)
+test/         unit/ (Vitest + the golden G-code file), e2e/ (Playwright), browser/ (the in-browser suite)
+scripts/      vendor.mjs, icons.mjs, desktop-smoke.mjs
+docs/         HANDOFF.md (status, hardware facts, open questions) and the pause-temperature test file
+dist/         build output (git-ignored)
 ```
 
 ## Credits

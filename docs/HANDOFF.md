@@ -1,4 +1,4 @@
-# PenPlot Studio — Engineering Handoff
+# DaVinci — Engineering Handoff
 
 _Written 2026-09-29 at the end of the first build session. Updated the same day after session 2, which set up
 git and the Node dev toolchain (§1, §7.5, §10, §11). It's meant to let someone (a person or an agent) pick this
@@ -11,7 +11,7 @@ project up. Read sections 1–3 before touching printer-related code._
 - **What it is:** a static, no-build web app that turns designs (text, drawings, images, patterns, SVG) into
   pen-plotter G-code for a **Bambu Lab X1 Carbon** with the Falu pen mount. It's modelled on 3dplotter.xyz.
 - **Software state:** feature-complete for v1. Every file is replayed in a built-in **G-code simulator** before download.
-  There's a browser test suite (`tests/`) with a simulator self-test, edge cases, full font, pattern and trace coverage,
+  There's a browser test suite (`test/browser/`) with a simulator self-test, edge cases, full font, pattern and trace coverage,
   and randomized fuzzing (see §7 for the latest results).
 - **Hardware state:** **never run on the real printer.** Several physical facts are *inferred* (§3). The most
   important unknown is the **sign of the pen X offset**. The default is now −28 (pen left of the nozzle), which
@@ -29,15 +29,16 @@ project up. Read sections 1–3 before touching printer-related code._
 | Purpose | Command / action |
 |---|---|
 | Set up (once) | Node 24 LTS, then `npm ci` and `npx playwright install chromium`. See README → Development for Linux/Windows install commands |
-| Use the app | Double-click `index.html` (Chrome/Edge), or `npm start` / `python serve.py`, which serve http://127.0.0.1:8791 with no caching and open a browser |
+| Use the app | Install it from a release (README → Install), or `npm start` / `node server/serve.mjs`, which serve `src/` at http://127.0.0.1:8791 (browsers revalidate every file) and open a browser. Double-clicking `src/index.html` also works |
 | Develop | `npm run dev` (live reload) |
 | Run tests | `npm test` (Vitest, ≈ 20 s), `npm run test:e2e` (Playwright: UI + browser suite with 60 fuzz scenarios), `npm run check` (all of CI). Manual: open http://127.0.0.1:8791/tests/ → **Run all tests** |
 | Replay one fuzz case | On the tests page: `await replayScenario(<seed>)` returns `{P, prefs, plan, res, sim, mismatch}` and draws it. Seeds are the ones printed by Vitest or the browser runner |
-| Windows shortcut | `Start PenPlot Studio.bat` uses Node, then Python, then opens index.html directly |
+| Web server mode | `davinci --serve [--port N] [--host 0.0.0.0]` (installed app), or `node server/serve.mjs --host 0.0.0.0` from a checkout. The installers can set it up to start at sign-in (README → Web server mode) |
+| Build the installers | `npm run desktop:dist` → `dist/` (§11 item 25) |
 
-- **Build step:** none. Everything is classic `<script>` tags in dependency order (see `index.html`), and every module
-  attaches to `window.PP`.
-- **Runtime network needs:** none when served. The Hershey fonts and opentype.js are in `vendor/` (see
+- **Build step:** none. Everything is classic `<script>` tags in dependency order (see `src/index.html`), and every
+  module attaches to `window.PP`.
+- **Runtime network needs:** none when served. The Hershey fonts and opentype.js are in `src/vendor/` (see
   `scripts/vendor.mjs`). `file://` pages can't `fetch()` local files, so they still load fonts from
   `cdn.jsdelivr.net/npm/hersheytext@2.0.0/`.
 - **Note:** port 8765 on the original machine is used by an unrelated local wiki server. The app uses **8791**.
@@ -107,26 +108,27 @@ The canvas shows everything else striped red.
 
 | File | Namespace | Responsibility |
 |---|---|---|
-| `js/core/util.js` | `PP.U` | DOM builder `h()`, formatting (`fmt` = trimmed fixed decimals for G-code), downloads, file pick/read, `mulberry32`, `Emitter` |
-| `js/core/geometry.js` | `PP.Geo` | Polylines as **flat arrays `[x0,y0,x1,y1,…]`, Y-up, mm**. bbox (skips non-finite), affine `[a,b,c,d,e,f]`, RDP simplify, dedupe, Chaikin, Catmull-Rom, resample, shapes, hit tests, even-odd point-in-polygon, Liang–Barsky clipping, circle eraser, even-odd **hatch fill** |
-| `js/core/svg.js` | `PP.SVG` | Path-data parser (all commands, arcs → center form), adaptive flattening, SVG document import (units/viewBox, transforms, `<use>`, grouped by color), SVG export |
-| `js/core/storage.js` | `PP.Storage` | IndexedDB key/value (`penplot-studio`/`kv`) with a localStorage fallback. `getLocal`/`setLocal` for small prefs (`pp.*`) |
-| `js/core/fonts.js` | `PP.Fonts` | Hershey JSON (23 fonts, one fetch), EMS/Hershey SVG fonts (18), "My Handwriting" (localStorage `pp.handwriting.v1`), uploaded TTF/OTF via opentype.js (persisted in IndexedDB). Normalized so cap height = 1 and the baseline is y = 0. `layout(text, fontId, {size, letterSpacing, lineSpacing, align, arc})` |
-| `js/core/optimizer.js` | `PP.Optimizer` | `prepare` (split at NaN, dedupe, **clip, then simplify**, min-length), `order` (grid nearest-neighbor with reversal, then `join` within tolerance; it keeps the joined start point), `estimate` (trapezoid + junction-deviation time model) |
-| `js/core/gcode.js` | `PP.GCode` | Profiles, `reachableRect`, `validateProfile`, `minSafeDrawZ`/`safeDrawZ`, **`build(jobs, profile, opts)`**, `calibrationJobs`, **`offsetFinder`** |
-| `js/core/gcodesim.js` | `PP.GSim` | **G-code simulator/safety checker**: `simulate(text, profile, opts)`, `check(text, profile, jobs, opts)`, `expectedPauses`, `summary`, `fmtMsg` |
-| `js/core/patterns.js` | `PP.Patterns` | 23 generators (written by a subagent; tested in Electron-as-Node plus our suite). `list`, `get`, `defaults`, `generate(id, params)` (clamps params, catches errors, caps at 400k points). `PP.Patterns.util` exposes its helpers |
-| `js/core/imagetrace.js` | `PP.ImageTrace` | 8 raster modes (written by a subagent). `toGray(imageData, pre)`, `trace(gray, mode, params, {mmPerPx})` → polylines in **pixel coordinates, Y down** |
-| `js/app/state.js` | `PP.Store` | Project `{name, layers[], objects[], activeLayerId, paper}`, selection, **snapshot undo/redo** (objects are immutable, so snapshots are reference arrays), autosave (debounced; `S.autosaveEnabled=false` in tests), serialize/load |
-| `js/app/objects.js` | `PP.Objects` | Object types `path / text / shape / pattern`, each with a transform `x, y, rotation, scaleX, scaleY` (TRS) and local geometry **centered on (0,0)**. Hatch `fill`. Caches: path WeakMap, param-key LRU, world WeakMap with a font **epoch** |
-| `js/ui/ui-core.js` | `PP.UI` | Icons, toasts, modal, confirm, form controls, generic `paramForm` |
-| `js/app/canvas.js` | `PP.View` | Canvas renderer (bed, grid, paper, red zone, objects, out-of-reach highlighting in red, selection handles), pan/zoom, **tools** (select/move/scale/rotate, pan, pen, line, polyline, curve, rect, ellipse, polygon, star, text, eraser) |
-| `js/app/preview.js` | `PP.Preview` | Animated preview. It now builds the real G-code, **simulates it**, and animates the simulator's strokes and travels, with a safety badge. It falls back to the plan if simulation fails |
-| `js/app/app.js` | `PP.App` | Profiles (built-ins + per-builtin overrides + custom, in localStorage `pp.profiles`), prefs, **`buildPlan({profile?, prefs?, layerIds?})`**, placement, object ops, file I/O, header/toolbar/statusbar, keyboard shortcuts, drag & drop, boot |
-| `js/ui/panels-left.js` | | Tabs: Text, Draw, Image, Patterns, Import (+ examples, welcome design) |
-| `js/ui/panels-right.js` | | Selection properties, Layers/pens (Z/speed overrides clamped), Plotter quick settings, Plot summary, Paper (includes a "Designer margins" preset) |
-| `js/ui/modals.js` | | Printer settings (tabs), **Export** (runs the simulator per file and asks for confirmation on failure), **Calibration** (grid/compact/frame/offset finder), Help |
-| `js/ui/imagedialog.js`, `js/ui/handwriting.js` | | Image trace dialog; handwriting glyph editor |
+| `src/js/core/util.js` | `PP.U` | DOM builder `h()`, formatting (`fmt` = trimmed fixed decimals for G-code), downloads, file pick/read, `mulberry32`, `Emitter` |
+| `src/js/core/geometry.js` | `PP.Geo` | Polylines as **flat arrays `[x0,y0,x1,y1,…]`, Y-up, mm**. bbox (skips non-finite), affine `[a,b,c,d,e,f]`, RDP simplify, dedupe, Chaikin, Catmull-Rom, resample, shapes, hit tests, even-odd point-in-polygon, Liang–Barsky clipping, circle eraser, even-odd **hatch fill** |
+| `src/js/core/svg.js` | `PP.SVG` | Path-data parser (all commands, arcs → center form), adaptive flattening, SVG document import (units/viewBox, transforms, `<use>`, grouped by color), SVG export |
+| `src/js/core/storage.js` | `PP.Storage` | IndexedDB key/value (`davinci`/`kv`) with a localStorage fallback. `getLocal`/`setLocal` for small prefs (`davinci.*`) |
+| `src/js/core/fonts.js` | `PP.Fonts` | Hershey JSON (23 fonts, one fetch), EMS/Hershey SVG fonts (18), "My Handwriting" (localStorage `davinci.handwriting`), uploaded TTF/OTF via opentype.js (persisted in IndexedDB). Normalized so cap height = 1 and the baseline is y = 0. `layout(text, fontId, {size, letterSpacing, lineSpacing, align, arc})` |
+| `src/js/core/optimizer.js` | `PP.Optimizer` | `prepare` (split at NaN, dedupe, **clip, then simplify**, min-length), `order` (grid nearest-neighbor with reversal, then `join` within tolerance; it keeps the joined start point), `estimate` (trapezoid + junction-deviation time model) |
+| `src/js/core/gcode.js` | `PP.GCode` | Profiles, `reachableRect`, `validateProfile`, `minSafeDrawZ`/`safeDrawZ`, **`build(jobs, profile, opts)`**, `calibrationJobs`, **`offsetFinder`** |
+| `src/js/core/gcodesim.js` | `PP.GSim` | **G-code simulator/safety checker**: `simulate(text, profile, opts)`, `check(text, profile, jobs, opts)`, `expectedPauses`, `summary`, `fmtMsg` |
+| `src/js/core/patterns.js` | `PP.Patterns` | 23 generators (written by a subagent; tested in Electron-as-Node plus our suite). `list`, `get`, `defaults`, `generate(id, params)` (clamps params, catches errors, caps at 400k points). `PP.Patterns.util` exposes its helpers |
+| `src/js/core/imagetrace.js` | `PP.ImageTrace` | 8 raster modes (written by a subagent). `toGray(imageData, pre)`, `trace(gray, mode, params, {mmPerPx})` → polylines in **pixel coordinates, Y down** |
+| `src/js/app/state.js` | `PP.Store` | Project `{name, layers[], objects[], activeLayerId, paper}`, selection, **snapshot undo/redo** (objects are immutable, so snapshots are reference arrays), autosave (debounced; `S.autosaveEnabled=false` in tests), serialize/load |
+| `src/js/app/objects.js` | `PP.Objects` | Object types `path / text / shape / pattern`, each with a transform `x, y, rotation, scaleX, scaleY` (TRS) and local geometry **centered on (0,0)**. Hatch `fill`. Caches: path WeakMap, param-key LRU, world WeakMap with a font **epoch** |
+| `src/js/ui/ui-core.js` | `PP.UI` | Icons, toasts, modal, confirm, form controls, generic `paramForm` |
+| `src/js/app/canvas.js` | `PP.View` | Canvas renderer (bed, grid, paper, red zone, objects, out-of-reach highlighting in red, selection handles), pan/zoom, **tools** (select/move/scale/rotate, pan, pen, line, polyline, curve, rect, ellipse, polygon, star, text, eraser) |
+| `src/js/app/preview.js` | `PP.Preview` | Animated preview. It now builds the real G-code, **simulates it**, and animates the simulator's strokes and travels, with a safety badge. It falls back to the plan if simulation fails |
+| `src/js/app/app.js` | `PP.App` | Profiles (built-ins + per-builtin overrides + custom, in localStorage `davinci.profiles`), prefs, **`buildPlan({profile?, prefs?, layerIds?})`**, placement, object ops, file I/O (Save in place, Save as), tool strip, status bar (printer, paper), plot bar (summary, Preview, Export G-code), drag & drop, boot |
+| `src/js/ui/panels-left.js` | | Tabs: Text, Image, Patterns, Import (+ examples, welcome design) |
+| `src/js/ui/panels-right.js` | | Selection properties, Layers/pens (Z/speed overrides clamped), Plotter quick settings, Plot summary, Paper (includes a "Designer margins" preset) |
+| `src/js/ui/modals.js` | | Printer settings (tabs), **Export** (runs the simulator per file and asks for confirmation on failure), **Calibration** (grid/compact/frame/offset finder), Help |
+| `src/js/ui/imagedialog.js`, `src/js/ui/handwriting.js` | | Image trace dialog; handwriting glyph editor |
+| `src/js/ui/menubar.js` | `PP.Menus` | The menus (File, Edit, View, Printer, Help) and every command with its shortcut, drawn as the page's menu bar or handed to the desktop shell as its native menu |
 
 ### 4.2 Pipeline: design to G-code
 
@@ -229,18 +231,21 @@ point, and **pauses so you can measure**. It ends with the bed down and the tool
 
 - **Tools and shortcuts:** V select, H pan, P pen, L line, Y polyline, C curve, R rect, E ellipse, G polygon, S star,
   T text, X eraser. Ctrl+Z/Y undo/redo, Ctrl+D/C/V duplicate/copy/paste, Del delete, arrows nudge,
-  Ctrl+S/O save/open, Ctrl+E export, 0/+/− zoom.
+  Ctrl+S/O save/open, Ctrl+E export, 0/+/− zoom (more in the menus, below).
 - **Scale handles:** corner handles keep proportions and Shift frees them. Shift snaps rotation to 15°.
 - **Layer order** is plot order, and each layer is one pen.
 - **Hit testing:** unfilled shapes larger than 25 mm are picked by their outline only.
 - **Welcome design:** added on first launch when there's no autosave.
-- **First-launch help:** opens once (`pp.seenHelp`).
+- **First-launch help:** opens once (`davinci.seenHelp`).
+- **Menus (2.0):** File, Edit, View, Printer and Help (`src/js/ui/menubar.js`); in the desktop app they are the
+  window's native menu and the page's menu bar is hidden. Shortcuts: Ctrl+N (desktop only: browsers keep it),
+  Ctrl+O/S, Ctrl+Shift+S, Ctrl+I import SVG, Ctrl+E export G-code, Ctrl+Shift+E export SVG, Ctrl+, printer settings.
 
 ---
 
 ## 7. Testing status
 
-### 7.1 Suite contents (`tests/harness.js`, run by `tests/tests.js` in the browser and by Vitest in Node)
+### 7.1 Suite contents (`test/browser/harness.js`, run by `test/browser/tests.js` in the browser and by Vitest in Node)
 
 1. **Simulator self-test.** It takes a valid file and applies 20 mutations; each must raise the expected code:
    - missing attach pause, missing pen lift, pen pushed into the bed, nozzle into the excluded zone, holder off the plate
@@ -319,8 +324,8 @@ when the session ended.
   from session 1's run.
 - **Node vs browser.** jsdom has no 2D canvas, so SVG stroke colors all become black in Node. Color grouping is
   only covered in the browser. Everything else behaves the same.
-- **Offline.** `test/unit/setup.js` serves `vendor/` through a fetch shim that throws on any other URL. The Playwright
-  fixtures (`e2e/fixtures.js`) abort every non-localhost request and fail a test on any console error or warning.
+- **Offline.** `test/unit/setup.js` serves `src/vendor/` through a fetch shim that throws on any other URL. The
+  Playwright fixtures (`test/e2e/fixtures.js`) abort every non-localhost request and fail a test on any console error or warning.
 - **Golden file.** `test/unit/__snapshots__/x1c-square.gcode` is the exact output for a 10 mm square on the X1C. A
   deliberate generator change shows up as a diff there; review it, then run `npx vitest -u`.
 - **Found by the new tests:** 3 SVG import bugs, fixed in session 2 (§11), and one UX bug, §8 item 14.
@@ -349,13 +354,13 @@ when the session ended.
     ("this will take 30 hours").
 12. **`file://` mode** hasn't been verified in a real browser: the built-in pane only renders snapshots. It should work
     because it uses classic scripts and CORS-enabled CDNs. Fonts come from the CDN in this mode, since `fetch()`
-    can't read `file://`. `npm start` / `serve.py` are the fallback. Playwright only tests the served app.
+    can't read `file://`. `npm start` is the fallback. Playwright only tests the served app.
 13. **A browser with old saved profile overrides** keeps +28 and nozzle min 0 (§4.3). Consider a one-time migration
     that flags overrides older than profile schema v2.
 14. **Thin objects squash instead of moving** when dragged from their centre (found by the UI tests). At the default
     zoom, the top and bottom edge scale handles of a thin object, such as the welcome design's 5.5 mm tagline, are
     within the 7 px handle hit radius of its centre. A press there starts a scale, so scaleY drops to 0.01.
-    `e2e/editing.spec.js` works around it by grabbing at 30% of the width. Fix in `js/app/canvas.js` by preferring
+    `test/e2e/editing.spec.js` works around it by grabbing at 30% of the width. Fix in `src/js/app/canvas.js` by preferring
     move inside the frame when handles overlap it.
 15. **Simulator parameter flags:** a bare letter (`G28 X`, or a malformed `M104 S`) is stored as `true` and reads as 1
     in numeric checks. The generator never emits one.
@@ -371,7 +376,7 @@ when the session ended.
     - A cancelled file pick is cleaned up.
     - Accents are kept as their base letter in file names.
 16. **Tooling scope:** `tsc --checkJs` covers geometry, optimizer, gcode and gcodesim, with `PP` typed `any`.
-    Prettier skips `js/`, `css/`, the HTML, `tests/` and Markdown on purpose; a reformat would expand the code
+    Prettier skips `src/js/`, `src/css/`, the HTML, `test/browser/` and Markdown on purpose; a reformat would expand the code
     25–40%. Remove those lines from `.prettierignore` to opt in. There are no screenshot (visual regression)
     tests, because font rendering differs between Windows and Linux and would need per-OS baselines.
 
@@ -583,6 +588,32 @@ Record every answer. They settle the assumptions in §3.
     **Add files…** takes STLs or the downloaded ZIP (`U.unzip`), matches each file to a part by name, and refuses a
     cartridge or spring without a pen bore. Parts are kept in IndexedDB (`mount:<part>`, with
     `navigator.storage.persist()`). `*.stl` and `*.3mf` are git-ignored.
+25. **2.0.0 (2026-11-12): DaVinci.** The app is renamed DaVinci (repo DaVinci-pen-plotter), with a new icon (a
+    Vitruvian circle and square, `src/assets/davinci.svg`; `npm run icons` renders `installer/icons/`). No legacy
+    support: projects are `.davinci` (gzipped JSON with `app: "DaVinci"`; anything else is refused), storage moved
+    to `davinci.*` keys and the `davinci` IndexedDB, and `.penplot` files no longer open.
+    - **Layout:** `src/` (the app), `server/` (serve.mjs), `desktop/` (Electron), `installer/` (packaging), `test/`
+      (`unit/`, `e2e/`, `browser/` served at `/tests/`), `docs/`, `scripts/`; builds go to `dist/`. serve.py and
+      the .bat launcher are gone.
+    - **UI:** the top banner became a menu bar (§6). The printer and paper moved to the status bar; the plot summary,
+      safety chip, Preview and Export G-code to the bottom of the right panel. Save writes back to the project's
+      file (desktop app, or File System Access in Chromium); Save as asks; elsewhere both download.
+    - **Web server mode:** `davinci --serve` serves the bundled app read-only (GET/HEAD) with `server/serve.mjs`,
+      on 127.0.0.1 unless `--host 0.0.0.0`. Windows: in the Electron main process with a tray icon. Linux: Electron
+      as plain Node (`ELECTRON_RUN_AS_NODE`), which needs no display; the `davinci` launcher and the .deb unit start
+      it that way directly.
+    - **Installers:** Windows NSIS (`installer/windows/installer.nsh`): a Web server mode page (silent: `/WEBSERVER`
+      `/PORT=n`) that adds an HKCU Run entry, a private-profile firewall rule for DaVinci.exe on that port (UAC
+      prompt when the install is per-user), starts the server and shows the address; reinstalls keep the choice and
+      the uninstaller removes all of it. Linux: `davinci-<version>-linux-x64-setup.sh` (`installer/linux/install.sh`
+      plus the app) installs per user: desktop app (menu entry, icons, `application/x-davinci`), web server
+      (`davinci-server.service`, a systemd user unit) or both, and `uninstall.sh`. Also an AppImage and a .deb
+      (with the unit, off by default).
+    - **Verified:** `npm run check`; the packaged smoke test (18 checks) under Xvfb; the Linux installer, .deb and
+      AppImage in a throwaway systemd container (install, serve on the LAN address, reinstall, uninstall to
+      nothing); the Windows installer under Wine (silent install with the server, Run key, file type, server
+      answering, reinstall keeping the choice, uninstall). Wine has no real firewall or PowerShell, so the firewall
+      rule and the PowerShell address lookup were checked only by CI's Windows run (`test-installer.ps1`).
 
 ---
 
