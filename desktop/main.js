@@ -2,19 +2,24 @@
 
 // DaVinci desktop shell. One window that serves the bundled static web app (desktop/bundle/app/, staged by
 // prepare.mjs) from a privileged custom scheme, app://davinci/. file:// is avoided on purpose: fonts.js skips
-// local fetch() on file: pages and IndexedDB is unreliable there.
+// local fetch() on file: pages and IndexedDB is unreliable there. With --serve there is no window: server.js
+// serves the same files to browsers.
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, session, shell } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { buildMenu, sanitize } = require('./menu.js');
 
 const APP_ID = 'com.joshuamontierth.davinci';
 const SCHEME = 'app';
 const HOST = 'davinci';
 const ORIGIN = `${SCHEME}://${HOST}`;
 const APP_DIR = path.join(__dirname, 'bundle', 'app');
-const ICON = path.join(__dirname, 'bundle', 'icons', '256x256.png');
+const ICON_DIR = path.join(__dirname, 'bundle', 'icons');
+const ICON = path.join(ICON_DIR, '256x256.png');
 const PRELOAD = path.join(__dirname, 'preload.js');
+
+const SERVE = process.argv.includes('--serve');
 
 // Must run before the app is ready. standard + secure give the page a real, stable origin (IndexedDB,
 // localStorage, blob: downloads); supportFetchAPI + corsEnabled let fetch() read vendor/ fonts.
@@ -235,6 +240,55 @@ async function readOpenFile(file) {
   return { name: path.basename(file), data: await fs.readFile(file) };
 }
 
+// The project's file: File → Save writes to it without asking. Opening a file sets it, Save as replaces it, and
+// the page clears it for a new project (or a file that did not open). Only this process knows the path.
+let projectFile = null;
+const PROJECT_FILTERS = [{ name: 'DaVinci project', extensions: ['davinci'] }];
+
+async function openProject(event) {
+  guard(event);
+  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+    title: 'Open project',
+    defaultPath: lastSaveDir || app.getPath('documents'),
+    filters: PROJECT_FILTERS,
+    properties: ['openFile'],
+  });
+  if (r.canceled || !r.filePaths.length) return null;
+  const file = await readOpenFile(r.filePaths[0]);
+  projectFile = r.filePaths[0];
+  lastSaveDir = path.dirname(projectFile);
+  return file;
+}
+
+/**
+ * opts.saveAs: always ask; opts.name: the suggested file name. Resolves with { name, chosen } (chosen: the user
+ * picked the file just now) or { canceled: true }.
+ */
+async function saveProject(event, data, opts) {
+  guard(event);
+  const o = opts || {};
+  let file = o.saveAs ? null : projectFile;
+  const chosen = !file;
+  if (!file) {
+    const name = safeName(o.name || 'plot.davinci');
+    const testDir = process.env.PP_TEST_SAVE_DIR;
+    if (testDir) file = path.join(testDir, name);
+    else {
+      const r = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+        title: o.saveAs ? 'Save project as' : 'Save project',
+        defaultPath: path.join(lastSaveDir || app.getPath('documents'), name),
+        filters: PROJECT_FILTERS,
+      });
+      if (r.canceled || !r.filePath) return { canceled: true };
+      file = OPENABLE.test(r.filePath) ? r.filePath : r.filePath + '.davinci';
+    }
+  }
+  await fs.writeFile(file, Buffer.from(data));
+  projectFile = file;
+  lastSaveDir = path.dirname(file);
+  return { name: path.basename(file), chosen };
+}
+
 // Links to the outside world open in the system browser; the window never leaves app://davinci/.
 app.on('web-contents-created', (_event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
@@ -249,41 +303,6 @@ app.on('web-contents-created', (_event, contents) => {
   contents.on('will-navigate', guard);
   contents.on('will-redirect', guard);
 });
-
-// Basic Edit and View menus only. The roles carry the usual accelerators (Ctrl+R, Ctrl+Shift+I, zoom, ...). The
-// page sees keys first, so its own shortcuts (Ctrl+Z, Ctrl+C/V, Ctrl+0 ...) keep priority over these.
-function buildMenu() {
-  const template = [
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
-      ],
-    },
-  ];
-  if (process.platform === 'darwin') template.unshift({ role: 'appMenu' });
-  return Menu.buildFromTemplate(template);
-}
 
 let mainWindow = null;
 
@@ -320,7 +339,19 @@ function createWindow() {
   return win;
 }
 
-if (!app.requestSingleInstanceLock()) {
+function setMenu(event, model) {
+  if (!isAppUrl(event.senderFrame && event.senderFrame.url)) return;
+  Menu.setApplicationMenu(buildMenu(sanitize(model), () => mainWindow));
+}
+
+if (SERVE) {
+  require('./server.js')
+    .runServer({ argv: process.argv, appDir: APP_DIR, iconDir: ICON_DIR })
+    .catch((e) => {
+      console.error('DaVinci: ' + e.message);
+      app.exit(1);
+    });
+} else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.enableSandbox();
@@ -331,7 +362,10 @@ if (!app.requestSingleInstanceLock()) {
     const f = fileArg(argv, cwd);
     if (f)
       readOpenFile(f)
-        .then((file) => mainWindow && mainWindow.webContents.send('pp:open-file', file))
+        .then((file) => {
+          projectFile = f;
+          if (mainWindow) mainWindow.webContents.send('pp:open-file', file);
+        })
         .catch((e) => console.error('DaVinci: ' + e.message));
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
@@ -341,12 +375,22 @@ if (!app.requestSingleInstanceLock()) {
     protocol.handle(SCHEME, handleAppRequest);
     setupPermissions();
     ipcMain.handle('pp:save-files', saveFiles);
-    ipcMain.handle('pp:take-open-file', (event) => {
+    ipcMain.handle('pp:take-open-file', async (event) => {
       guard(event);
       const f = pendingOpen;
       pendingOpen = null;
-      return f ? readOpenFile(f) : null;
+      if (!f) return null;
+      const file = await readOpenFile(f);
+      projectFile = f;
+      return file;
     });
+    ipcMain.handle('pp:open-project', openProject);
+    ipcMain.handle('pp:save-project', saveProject);
+    ipcMain.handle('pp:close-project', (event) => {
+      guard(event);
+      projectFile = null;
+    });
+    ipcMain.on('pp:set-menu', setMenu);
     // anything still downloaded the browser way gets a readable Save dialog
     session.defaultSession.on('will-download', (_e, item) => {
       const name = safeName(item.getFilename());
@@ -355,7 +399,7 @@ if (!app.requestSingleInstanceLock()) {
         defaultPath: path.join(lastSaveDir || app.getPath('downloads'), name),
       });
     });
-    Menu.setApplicationMenu(buildMenu());
+    Menu.setApplicationMenu(buildMenu([], () => mainWindow));
     createWindow();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();

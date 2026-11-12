@@ -370,7 +370,7 @@
         if (desk) {
           const r = await desk.saveProject(await projectBytes(), { name: suggested, saveAs });
           if (!r || r.canceled) return;
-          if (named(r.name)) await desk.saveProject(await projectBytes(), {});
+          if (r.chosen && named(r.name)) await desk.saveProject(await projectBytes(), {});
           where = ' as ' + r.name;
         } else if (window.showSaveFilePicker) {
           if (saveAs || !fileHandle) {

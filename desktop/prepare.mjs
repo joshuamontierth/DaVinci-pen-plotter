@@ -23,8 +23,10 @@ const JUNK = new Set(['.DS_Store', 'Thumbs.db', 'Desktop.ini']);
 await rm(bundle, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-// The window and tray icons (installer/icons/, rendered from src/assets/davinci.svg by `npm run icons`)
+// The window and tray icons (installer/icons/, rendered from src/assets/davinci.svg by `npm run icons`), and the web
+// server for `davinci --serve`
 await cp(path.join(root, 'installer', 'icons'), path.join(bundle, 'icons'), { recursive: true });
+await cp(path.join(root, 'server', 'serve.mjs'), path.join(bundle, 'server', 'serve.mjs'));
 
 for (const from of SOURCES) {
   try {
