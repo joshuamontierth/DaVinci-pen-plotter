@@ -40,6 +40,11 @@ export default [
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
   },
   {
+    // packaging (electron-builder's config and hooks) is CommonJS
+    files: ['installer/**/*.cjs'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'commonjs', globals: globals.node },
+  },
+  {
     // Playwright specs run in Node but page.evaluate() callbacks run in the browser
     files: ['test/e2e/**/*.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node, ...globals.browser } },

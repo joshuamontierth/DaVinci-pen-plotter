@@ -1,0 +1,15 @@
+# DaVinci web server for the .deb install: a systemd user service, off until you turn it on with
+#   systemctl --user enable --now davinci-server
+# Another port: systemctl --user edit davinci-server, and set ExecStart= again with another --port.
+[Unit]
+Description=DaVinci web server (serves DaVinci to browsers on the network)
+
+[Service]
+# Electron as plain Node: no display, no Chromium
+Environment=ELECTRON_RUN_AS_NODE=1
+ExecStart=/opt/DaVinci/davinci /opt/DaVinci/resources/app.asar/bundle/server/serve.mjs --root /opt/DaVinci/resources/app.asar/bundle/app --no-open --host 0.0.0.0 --port 8791
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,6 +1,7 @@
-# Builds the Electron desktop app (desktop/) natively on each OS, no cross-compiling: AppImage + tar.gz on
-# Linux, portable .exe + NSIS installer on Windows. Runs on version tags (v1.2.3), where the files are also
-# attached to a GitHub Release, and on demand (workflow_dispatch) where they are only kept as run artifacts.
+# Builds the desktop app and its installers natively on each OS, no cross-compiling: the installer script, AppImage
+# and .deb on Linux, the NSIS installer on Windows. Each is smoke-tested, and the Windows installer is installed
+# with the web server and uninstalled again. Runs on version tags (v1.2.3), where the files are also attached to
+# the GitHub Release (any already there are kept), and on demand (workflow_dispatch) as run artifacts only.
 name: Desktop app
 
 on:
@@ -54,13 +55,31 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a npm run desktop:test -- --packaged
           else npm run desktop:test -- --packaged; fi
+      - name: Install and uninstall with the web server (Windows)
+        if: runner.os == 'Windows'
+        working-directory: .
+        shell: pwsh
+        run: ./installer/windows/test-installer.ps1
+      - name: Install, serve and uninstall (Linux)
+        if: runner.os == 'Linux'
+        working-directory: .
+        shell: bash
+        run: |
+          sh dist/davinci-*-linux-x64-setup.sh --app
+          ~/.local/bin/davinci --serve --port 8795 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8795/ | grep -q '<title>DaVinci</title>' && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8795/ | grep -q '<title>DaVinci</title>'
+          kill %1
+          sh ~/.local/share/davinci/uninstall.sh
+          test ! -e ~/.local/bin/davinci && test ! -e ~/.local/share/davinci && test ! -e ~/.local/share/applications/davinci.desktop
       - uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.os }}
           path: |
             dist/*.AppImage
-            dist/*.tar.gz
-            dist/*.exe
+            dist/*.deb
+            dist/*-setup.sh
+            dist/*-setup.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -78,11 +97,14 @@ jobs:
           pattern: desktop-*
           path: artifacts
           merge-multiple: true
-      - name: Create the release (if needed) and attach the files
+      - name: Create the release (if needed) and attach the files it does not have yet
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
-          gh release upload "$TAG" artifacts/* --clobber
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "DaVinci ${TAG#v}" --generate-notes
+          have=$(gh release view "$TAG" --json assets -q '.assets[].name')
+          for f in artifacts/*; do
+            if grep -qxF "$(basename "$f")" <<< "$have"; then echo "kept $(basename "$f")"; else gh release upload "$TAG" "$f"; fi
+          done
