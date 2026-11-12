@@ -17,6 +17,17 @@ export async function openApp(page, { skipHelp = true } = {}) {
   });
 }
 
+/** The open dropdown's item called `name` (exact), whatever its kind (command, radio or checkbox). */
+export function menuItem(page, name) {
+  return page.locator('.menu-pop .mi').and(page.getByLabel(name, { exact: true }));
+}
+
+/** Pick an item from a menu in the menu bar: menu(page, 'File', 'Save as…'). */
+export async function menu(page, title, item) {
+  await page.locator('#menubar').getByRole('menuitem', { name: title, exact: true }).click();
+  await menuItem(page, item).click();
+}
+
 /** Page (client) coordinates of a bed point in mm. */
 export function toClient(page, x, y) {
   return page.evaluate(

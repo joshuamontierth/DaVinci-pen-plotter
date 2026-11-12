@@ -293,7 +293,7 @@
           try { await navigator.clipboard.writeText(lastText); UI.toast('G-code copied', 'info'); } catch (e) { UI.toast('Clipboard not available', 'warn'); }
         }, { small: true, icon: 'copy' }))));
 
-    UI.modal({ title: 'Download G-code', body, wide: true, footer: [h('span', { class: 'hint' }, 'Generated for ' + p.name), h('span', { class: 'hspacer' }), UI.btn('Printer settings', () => UI.openPrinterSettings(), { icon: 'settings' })] });
+    UI.modal({ title: 'Export G-code', body, wide: true, footer: [h('span', { class: 'hint' }, 'Generated for ' + p.name), h('span', { class: 'hspacer' }), UI.btn('Printer settings', () => UI.openPrinterSettings(), { icon: 'settings' })] });
     renderFiles();
   };
 
@@ -453,11 +453,11 @@
     const p = PP.App.profile();
     return [
       h('p', { class: 'lead' }, 'DaVinci turns your Bambu Lab printer into a pen plotter. Design here, download G-code and plot from the SD card - no firmware changes.'),
-      step(1, 'Install the pen mount', h('a', { href: '#', onclick: (e) => { e.preventDefault(); while (UI.closeTopModal()); UI.openPenHolder(); } }, 'Download the pen mount'), ' sized for your pen (also in Printer settings → Pen mount), print it and fit the pen. Do not clip the module onto the printer yet - that happens at the first pause.'),
-      step(2, 'Calibrate once', 'Before your first real plot, work through the ', h('b', null, 'Calibration'), ' tab: an empty run, a dry-run frame test and the offset finder. It takes about 15 minutes and confirms the pen offset for your mount.'),
-      step(3, 'Design', 'Use the Text, Draw, Image, Patterns and Import tabs. Each layer is one pen: layers plot top to bottom with a pause to swap pens.'),
-      step(4, 'Preview', 'Preview replays the actual G-code: pen strokes, travel moves and the safety check.'),
-      step(5, 'Download and copy', 'Download the .gcode file and copy it to the root of the SD card (no folders, simple file name).'),
+      step(1, 'Install the pen mount', h('a', { href: '#', onclick: (e) => { e.preventDefault(); while (UI.closeTopModal()); UI.openPenHolder(); } }, 'Download the pen mount'), ' sized for your pen (File → Download pen mount), print it and fit the pen. Do not clip the module onto the printer yet - that happens at the first pause.'),
+      step(2, 'Calibrate once', 'Before your first real plot, work through the ', h('b', null, 'Calibration'), ' guide: an empty run, a dry-run frame test and the offset finder. It takes about 15 minutes and confirms the pen offset for your mount.'),
+      step(3, 'Design', 'Draw with the tools on the left, or use the Text, Image, Patterns and Import tabs. Each layer is one pen: layers plot top to bottom with a pause to swap pens.'),
+      step(4, 'Preview', 'Preview (bottom right) replays the actual G-code: pen strokes, travel moves and the safety check.'),
+      step(5, 'Export and copy', 'Export G-code (File → Export G-code, or the button under Preview) and copy the file to the root of the SD card (no folders, simple file name).'),
       step(6, 'Tape the paper', 'Tape it where the canvas shows the paper. Keep tape away from the plate center, where the printer homes.'),
       step(7, 'Print, attach, plot', 'Start it from Print files → SD card. The printer homes, lowers the bed and pauses' + (p.purgeChute ? ' (the toolhead waits at the purge chute, back left)' : '') + '. Clip the pen holder on, check the pen, press Resume. At the end the bed lowers and the toolhead moves out of the way: remove the holder then.'),
       step(8, 'Tune', 'Faint lines: lower Z-Draw by 0.5 mm. Tearing or blobs: raise it. Ghost lines on travel moves: raise Z-Lift.'),
@@ -472,7 +472,7 @@
     const R = PP.GCode.reachableRect(p);
     return [
       h('p', { class: 'lead' }, 'Calibration answers three questions: will the module clear the printer, where exactly is the pen relative to the nozzle, and at what height does the pen touch the paper? Do the tests in this order - each one uses the result of the one before.'),
-      note('info', 'Every calibration file runs like a normal plot: copy it to the SD card, start it, clip the holder on at the first pause, press Resume. Open ', calLink('Calibrate', 'frame'), ' in the top bar to make the files. Keep the door open and a hand near the screen for the first runs.'),
+      note('info', 'Every calibration file runs like a normal plot: copy it to the SD card, start it, clip the holder on at the first pause, press Resume. ', calLink('Printer → Calibrate', 'frame'), ' makes the files. Keep the door open and a hand near the screen for the first runs.'),
 
       h('h3', null, '0. Before you start'),
       h('ul', { class: 'tips' },
@@ -541,9 +541,6 @@
         h('li', null, 'Do a dry run whenever you change offsets, nozzle limits, paper position or Z heights.'),
         h('li', null, 'Watch the first plots with the door open and a hand near the screen, ready to pause.'),
         h('li', null, 'Keep the module away from the top glass: if the glass limits the spring travel, remove it or use a riser.')),
-      h('h3', null, 'Credits'),
-      h('p', { class: 'hint' }, 'The Hershey Fonts were originally created by Dr. A. V. Hershey while working at the U. S. National Bureau of Standards. The format of the font data was originally created by James Hurt, Cognition, Inc. SVG font versions by Windell H. Oskay (Evil Mad Scientist); font packaging from the hersheytext project. Uploaded fonts are parsed with opentype.js.'),
-      buildStamp()
     ];
   }
 
@@ -554,11 +551,13 @@
   }
 
   function helpShortcuts() {
+    const k = PP.Menus.keyLabel, both = (a, b) => k(a) + ' / ' + k(b);
     return [h('div', { class: 'kv' },
       kv('Select / Pan', 'V / H (or hold Space)'), kv('Pen / Line / Polyline / Curve', 'P / L / Y / C'), kv('Rect / Ellipse / Polygon / Star', 'R / E / G / S'),
-      kv('Text / Eraser', 'T / X'), kv('Undo / Redo', 'Ctrl+Z / Ctrl+Shift+Z'), kv('Duplicate / Copy / Paste', 'Ctrl+D / C / V'),
+      kv('Text / Eraser', 'T / X'), kv('Undo / Redo', both('Mod+Z', 'Mod+Shift+Z')), kv('Duplicate / Copy / Paste', k('Mod+D') + ' / C / V'),
       kv('Delete', 'Del'), kv('Nudge', 'Arrows (Shift 10 mm, Alt 0.1 mm)'), kv('Zoom / Fit', 'Scroll, + / -, 0'),
-      kv('Save / Open', 'Ctrl+S / Ctrl+O'), kv('Download G-code', 'Ctrl+E'), kv('Preview play/pause', 'Space'),
+      kv('Open / Save', both('Mod+O', 'Mod+S')), kv('Save as', k('Mod+Shift+S')), kv('Import SVG', k('Mod+I')),
+      kv('Export G-code / SVG', both('Mod+E', 'Mod+Shift+E')), kv('Printer settings', k('Mod+,')), kv('Preview play/pause', 'Space'),
       kv('Scale freely / snap rotation', 'Shift while dragging a handle'))];
   }
 
@@ -572,5 +571,20 @@
     ], tab);
     const body = h('div', { class: 'help' }, t.el);
     UI.modal({ title: 'Help', body, width: 'min(880px, calc(100vw - 32px))', footer: [h('span', { class: 'hspacer' }), UI.btn('Open Calibrate', () => { while (UI.closeTopModal()); UI.openCalibration(); }, { icon: 'target' }), UI.btn('Done', () => UI.closeTopModal(), { primary: true })] });
+  };
+
+  UI.openAbout = function () {
+    const link = (href, label) => h('a', { href, target: '_blank', rel: 'noopener' }, label);
+    const body = h('div', { class: 'about' },
+      h('div', { class: 'about-head' },
+        h('img', { src: 'assets/davinci.svg', width: 56, height: 56, alt: '' }),
+        h('div', null, h('h3', null, 'DaVinci'), h('p', { class: 'muted' }, 'Version ' + PP.GCode.VERSION), buildStamp())),
+      h('p', null, 'Pen-plotter G-code for Bambu Lab printers. Modelled on ', link('https://3dplotter.xyz', '3dplotter.xyz'), ' and set up for Falu\'s pen mount (',
+        link('https://makerworld.com/en/models/2029113-modular-system-for-a1-p1-x1-series', 'MakerWorld'), '), following the ',
+        link('https://www.instructables.com/Turn-Your-Bambu-Lab-X1-Carbon-Into-a-Pen-Plotter-i/', 'Instructables guide'), '.'),
+      h('h3', null, 'Credits'),
+      h('p', { class: 'hint' }, 'The Hershey Fonts were originally created by Dr. A. V. Hershey while working at the U. S. National Bureau of Standards. The format of the font data was originally created by James Hurt, Cognition, Inc. SVG font versions by Windell H. Oskay (Evil Mad Scientist); font packaging from the hersheytext project. Uploaded fonts are parsed with opentype.js, and the pen mount is resized with manifold-3d.'),
+      h('p', { class: 'hint' }, 'Not affiliated with Bambu Lab, 3dplotter.xyz or the mount designer. ', link('https://github.com/joshuamontierth/DaVinci-pen-plotter', 'Source on GitHub'), '.'));
+    UI.modal({ title: 'About DaVinci', body, width: '480px', footer: [h('span', { class: 'hspacer' }), UI.btn('Close', () => UI.closeTopModal(), { primary: true })] });
   };
 })(window.PP = window.PP || {});

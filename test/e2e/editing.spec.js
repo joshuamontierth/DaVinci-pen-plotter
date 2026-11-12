@@ -7,6 +7,8 @@ import {
   dialog,
   dragOnBed,
   lastObject,
+  menu,
+  menuItem,
   objectCount,
   objects,
   openApp,
@@ -173,10 +175,14 @@ test('a straight line dragged by its middle moves; its end handles still scale i
 });
 
 test('undo and redo restore object counts and positions', async ({ page, consoleProblems }) => {
-  const undoBtn = page.getByRole('button', { name: 'Undo (Ctrl+Z)' });
-  const redoBtn = page.getByRole('button', { name: 'Redo (Ctrl+Shift+Z)' });
-  await expect(undoBtn).toBeDisabled();
-  await expect(redoBtn).toBeDisabled();
+  // the Edit menu's Undo and Redo, read with the menu open
+  const editState = async () => {
+    await page.locator('#menubar').getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    const s = { undo: await menuItem(page, 'Undo').isEnabled(), redo: await menuItem(page, 'Redo').isEnabled() };
+    await page.keyboard.press('Escape');
+    return s;
+  };
+  expect(await editState()).toEqual({ undo: false, redo: false });
 
   await page.keyboard.press('r');
   await dragOnBed(page, [
@@ -184,22 +190,22 @@ test('undo and redo restore object counts and positions', async ({ page, console
     [56, 200],
   ]);
   expect(await objectCount(page)).toBe(5);
-  await expect(undoBtn).toBeEnabled();
+  expect((await editState()).undo).toBe(true);
 
   await page.keyboard.press('Control+z');
   expect(await objectCount(page)).toBe(4);
-  await expect(redoBtn).toBeEnabled();
+  expect((await editState()).redo).toBe(true);
   await page.keyboard.press('Control+y');
   expect(await objectCount(page)).toBe(5);
   await page.keyboard.press('Control+z');
   expect(await objectCount(page)).toBe(4);
   await page.keyboard.press('Control+Shift+z');
   expect(await objectCount(page)).toBe(5);
-  await undoBtn.click();
+  await menu(page, 'Edit', 'Undo');
   expect(await objectCount(page)).toBe(4);
-  await redoBtn.click();
+  await menu(page, 'Edit', 'Redo');
   expect(await objectCount(page)).toBe(5);
-  await expect(redoBtn).toBeDisabled();
+  expect((await editState()).redo).toBe(false);
 
   // a drag is one undo step (small unfilled shapes are picked from inside)
   const rect = await lastObject(page);
@@ -220,7 +226,7 @@ test('undo and redo restore object counts and positions', async ({ page, console
   // undo back to the welcome design; the stack is then empty
   await page.keyboard.press('Control+z');
   expect(await objectCount(page)).toBe(4);
-  await expect(undoBtn).toBeDisabled();
+  expect((await editState()).undo).toBe(false);
   expect(consoleProblems).toEqual([]);
 });
 
@@ -391,9 +397,9 @@ test('UX guards: hidden layer, shortcuts while typing, empty text, stale preview
   // Ctrl+E works while a text field has focus
   await page.getByRole('textbox', { name: 'Project name' }).click();
   await page.keyboard.press('Control+e');
-  await expect(dialog(page, 'Download G-code')).toBeVisible();
+  await expect(dialog(page, 'Export G-code')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(dialog(page, 'Download G-code')).toBeHidden();
+  await expect(dialog(page, 'Export G-code')).toBeHidden();
 
   // a text object emptied in the Text panel is removed once deselected
   const target = (await objects(page)).find((o) => o.text === 'Made with a pen plotter');
@@ -442,7 +448,7 @@ test('layers reorder by drag, the color picker survives changes, paper and align
   await swatch.evaluate((el) => el.dispatchEvent(new Event('change', { bubbles: true })));
   await expect.poll(() => page.evaluate(() => PP.Store.project.layers[0].color)).toBe('#ff0000');
 
-  // paper popover from the top bar
+  // paper popover from the status bar
   await page.getByRole('button', { name: 'Letter · portrait' }).click();
   await page.locator('.popover .seg-btn', { hasText: 'Landscape' }).click();
   await expect(page.getByRole('button', { name: 'Letter · landscape' })).toBeVisible();

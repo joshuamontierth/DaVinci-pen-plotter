@@ -240,7 +240,7 @@
       else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); P.step(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopImmediatePropagation(); P.step(-1); }
     }, true);
-    // Space also "clicks" the focused button when the key is released (the header's Preview button, or the play
+    // Space also "clicks" the focused button when the key is released (the Preview button, or the play
     // button just clicked): that undid the pause or closed the preview. Swallow it so Space only toggles play.
     document.addEventListener('keyup', (e) => {
       if (!P.active || e.key !== ' ' || PP.UI.hasModal()) return;

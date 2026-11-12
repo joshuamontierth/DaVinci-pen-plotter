@@ -2,7 +2,7 @@
 // calibration dialog.
 /* global PP */
 import { test, expect } from './fixtures.js';
-import { dialog, download, openApp, simulate } from './helpers.js';
+import { dialog, download, menu, openApp, simulate } from './helpers.js';
 
 test.beforeEach(async ({ page }) => {
   await openApp(page);
@@ -13,7 +13,7 @@ test('Ctrl+E export passes the safety check and downloads simulator-clean G-code
   consoleProblems,
 }) => {
   await page.keyboard.press('Control+e');
-  const dlg = dialog(page, 'Download G-code');
+  const dlg = dialog(page, 'Export G-code');
   await expect(dlg).toBeVisible();
   await expect(dlg.locator('.xcard', { hasText: 'Plate size' })).toContainText('drawable 206 × 199');
   await expect(dlg.locator('.file-row')).toHaveCount(1);
@@ -61,8 +61,8 @@ test('two-layer design exports one file with a pen-change pause, or one file per
   await page.getByRole('button', { name: 'Two-color layers demo' }).click();
   await expect(page.locator('#right-panel .layer-row')).toHaveCount(2);
 
-  await page.getByRole('button', { name: 'Download G-code' }).first().click();
-  const dlg = dialog(page, 'Download G-code');
+  await page.locator('.plot-bar').getByRole('button', { name: 'Export G-code' }).click();
+  const dlg = dialog(page, 'Export G-code');
   await expect(dlg.locator('.xcard', { hasText: 'Layers' }).locator('b')).toHaveText('2');
   await expect(dlg.locator('.seg-btn.on')).toHaveText('One file (pause for pen change)');
   await expect(dlg.locator('.file-row')).toHaveCount(1);
@@ -90,7 +90,7 @@ test('two-layer design exports one file with a pen-change pause, or one file per
 });
 
 test('preview plays the simulated G-code, scrubs, steps and exits', async ({ page, consoleProblems }) => {
-  await page.locator('#header').getByRole('button', { name: 'Preview' }).click();
+  await page.locator('.plot-bar').getByRole('button', { name: 'Preview' }).click();
   const bar = page.locator('.preview-bar');
   await expect(bar).toHaveClass(/\bshow\b/);
   await expect(page.locator('body')).toHaveClass(/previewing/);
@@ -141,7 +141,7 @@ test('calibration: frame dry run and offset finder download simulator-clean file
   page,
   consoleProblems,
 }) => {
-  await page.getByRole('button', { name: 'Calibrate', exact: true }).click();
+  await menu(page, 'Printer', 'Calibrate…');
   const dlg = dialog(page, 'Calibration');
   await expect(dlg).toBeVisible();
   // first time: the frame test, ticked as a dry run
@@ -181,7 +181,7 @@ test('calibration: frame dry run and offset finder download simulator-clean file
   await expect(help.getByRole('tab', { name: 'Calibration' })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Calibrate', exact: true }).click();
+  await menu(page, 'Printer', 'Calibrate…');
   await expect(dialog(page, 'Calibration').locator('.seg-btn.on')).toHaveText('2 Offset finder');
   expect(consoleProblems).toEqual([]);
 });
@@ -191,7 +191,7 @@ test('the preview pauses with a real-speed click and with Space, even with its b
   consoleProblems,
 }) => {
   const state = () => page.evaluate(() => ({ active: PP.Preview.active, playing: PP.Preview.playing }));
-  // the header button keeps focus after the click: Space used to "click" it again on key-up and close the preview
+  // the Preview button keeps focus after the click: Space used to "click" it again on key-up and close the preview
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   await expect.poll(state).toEqual({ active: true, playing: true });
   await page.keyboard.press('Space');

@@ -422,13 +422,6 @@
         UI.checkField({ label: 'One layer per stroke color', value: importPrefs.splitColors, onChange: setP('splitColors') }),
         UI.checkField({ label: 'Hatch-fill filled shapes', value: importPrefs.fillShapes, onChange: setP('fillShapes') }),
       ]),
-      UI.section('Project', [
-        h('div', { class: 'btn-col' },
-          UI.btn('Open project...', () => PP.App.files.openProject(), { icon: 'open' }),
-          UI.btn('Save project', () => PP.App.files.saveProject(), { icon: 'save' }),
-          UI.btn('Export design as SVG', () => PP.App.files.exportSVG(), { icon: 'download' })),
-
-      ]),
       UI.section('Examples', [h('div', { class: 'btn-col' },
         UI.btn('Greeting card', () => loadExample('card'), { icon: 'text' }),
         UI.btn('Spirograph study', () => loadExample('spiro'), { icon: 'target' }),

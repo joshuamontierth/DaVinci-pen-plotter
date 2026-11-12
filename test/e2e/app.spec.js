@@ -1,17 +1,23 @@
 // App shell: boot, first-launch help, status bar, printer settings, tool shortcuts and zoom controls.
 /* global PP */
 import { test, expect } from './fixtures.js';
-import { openApp, toClient } from './helpers.js';
+import { menu, menuItem, openApp, toClient } from './helpers.js';
 
-test('boots with the header, tools, panels, canvas and welcome design', async ({ page, consoleProblems }) => {
+test('boots with the menu bar, tools, panels, canvas and welcome design', async ({ page, consoleProblems }) => {
   await openApp(page);
 
-  const header = page.locator('#header');
-  await expect(header.locator('.brand-name')).toHaveText('DaVinci');
-  await expect(header.locator('.printer-select')).toHaveValue('bambu-x1c');
-  await expect(header.getByRole('button', { name: 'Letter · portrait' })).toBeVisible();
-  await expect(header.getByRole('button', { name: 'Download G-code' })).toBeVisible();
-  await expect(header.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toBeDisabled();
+  const bar = page.locator('#menubar');
+  await expect(bar.locator('.brand-name')).toHaveText('DaVinci');
+  await expect(bar.getByRole('menuitem')).toHaveText(['File', 'Edit', 'View', 'Printer', 'Help']);
+  await expect(bar.getByRole('textbox', { name: 'Project name' })).toHaveValue('Untitled plot');
+  await expect(page).toHaveTitle('Untitled plot — DaVinci');
+  // the printer and the paper are in the status bar
+  await expect(page.locator('#statusbar').getByRole('button', { name: 'Printer: Bambu Lab X1 Carbon' })).toBeVisible();
+  await expect(page.locator('#statusbar').getByRole('button', { name: 'Letter · portrait' })).toBeVisible();
+  // nothing to undo yet
+  await bar.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+  await expect(menuItem(page, 'Undo')).toBeDisabled();
+  await page.keyboard.press('Escape');
 
   const tools = page.locator('#toolstrip .tool-btn');
   await expect(tools).toHaveCount(12);
@@ -33,12 +39,12 @@ test('boots with the header, tools, panels, canvas and welcome design', async ({
   // welcome design: border, two text lines and a spirograph, with nothing to undo
   const types = await page.evaluate(() => PP.Store.project.objects.map((o) => o.type));
   expect(types).toEqual(['shape', 'text', 'text', 'pattern']);
-  // the plot summary lives in the status bar; project settings are not in the right panel
-  await expect(page.locator('#statusbar .st-plan')).toContainText(/1 pen · .* of line · \d+ lifts/);
-  await expect(page.locator('#statusbar .st-check')).toHaveText('Ready to plot');
+  // the plot bar at the bottom of the right panel: summary, safety chip, Preview and Export G-code
+  const plot = page.locator('#right-panel .plot-bar');
+  await expect(plot.locator('.plot-sum')).toContainText(/1 pen · .* of line · \d+ lifts/);
+  await expect(plot.locator('.plot-check')).toHaveText('Ready to plot');
+  await expect(plot.getByRole('button')).toHaveText(['Ready to plot', 'Preview', 'Export G-code']);
   await expect(page.locator('#right-panel .sec-head')).toHaveCount(2);
-  // Preview / Download / Calibrate live only in the top bar
-  await expect(page.locator('#right-panel').getByRole('button', { name: /Download G-code|Preview/ })).toHaveCount(0);
   await expect(page.locator('#right-panel .layer-row .layer-count')).toHaveText('4');
 
   expect(consoleProblems).toEqual([]);
@@ -66,8 +72,8 @@ test('first launch opens the help dialog once', async ({ page, consoleProblems }
   await help.getByRole('button', { name: 'Done' }).click();
   await expect(help).toBeHidden();
 
-  // the header help button brings it back; Escape closes it
-  await page.locator('#header').getByRole('button', { name: 'Help', exact: true }).click();
+  // Help → Getting started brings it back; Escape closes it
+  await menu(page, 'Help', 'Getting started');
   await expect(help).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(help).toBeHidden();
@@ -83,7 +89,7 @@ test('status bar shows pen and nozzle position; settings show the drawable area'
   await expect(page.locator('#statusbar .st-noz')).toHaveText('Nozzle X 128.0  Y 155.0');
   await expect(page.locator('#statusbar .st-hint')).toHaveText('');
 
-  await page.getByRole('button', { name: 'Printer & plotter settings' }).click();
+  await menu(page, 'Printer', 'Printer settings…');
   const settings = page.getByRole('dialog').filter({ hasText: 'Printer & plotter settings' });
   await expect(settings).toBeVisible();
   await expect(settings.locator('.modal-foot')).toContainText('Drawable area: 206 × 199 mm  (X 21–227, Y 21–220)');
@@ -148,9 +154,9 @@ test('audit fixes: check chip, Align fits, inspector follows layers, one undo pe
     S.add(PP.Objects.create.shape('rect', { x: 120, y: 120, w: 20, h: 20 }), { history: false });
     S.updateLayer(S.project.activeLayerId, { visible: false });
   });
-  await expect(page.locator('#statusbar .st-check')).toHaveText('1 note');
+  await expect(page.locator('.plot-bar .plot-check')).toHaveText('1 note');
   await page.evaluate(() => PP.Store.updateLayer(PP.Store.project.activeLayerId, { visible: true }));
-  await expect(page.locator('#statusbar .st-check')).toHaveText('Ready to plot');
+  await expect(page.locator('.plot-bar .plot-check')).toHaveText('Ready to plot');
 
   // the Align button stays inside the right panel (it was cut off)
   await page.evaluate(() => PP.Store.select(PP.Store.project.objects[0].id));

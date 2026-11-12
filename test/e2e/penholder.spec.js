@@ -1,7 +1,7 @@
 // Download pen mount: the MakerWorld parts are added once (here synthetic stand-ins: an STL and a ZIP with two more),
 // kept across reloads, resized live for a measured pen, and downloaded with the printer's attachment.
 import { test, expect } from './fixtures.js';
-import { dialog, openApp } from './helpers.js';
+import { dialog, menu, openApp } from './helpers.js';
 
 let files;
 
@@ -73,8 +73,7 @@ test.beforeAll(async () => {
 });
 
 const open = async (page) => {
-  await page.getByRole('button', { name: 'Printer & plotter settings' }).click();
-  await page.getByRole('button', { name: 'Download pen mount' }).click();
+  await menu(page, 'File', 'Download pen mount…');
   return dialog(page, 'Download pen mount');
 };
 

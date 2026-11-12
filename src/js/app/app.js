@@ -1,6 +1,6 @@
 /*
  * DaVinci - application controller: profiles, plan building, object
- * operations, header/toolbar, keyboard shortcuts, file handling.
+ * operations, tool strip, status and plot bars, keyboard shortcuts, file handling.
  */
 (function (PP) {
   'use strict';
@@ -214,6 +214,7 @@
       const sel = S.selected();
       if (!sel.length) return;
       App.clipboard = sel.map(o => Object.assign({}, o));
+      events.emit('clipboard');
       PP.UI.toast(sel.length + ' object' + (sel.length > 1 ? 's' : '') + ' copied', 'info', 1500);
     },
     cut() { App.ops.copy(); App.ops.remove(); },
@@ -321,34 +322,106 @@
   // ---------------------------------------------------------------------------
   // Files
   // ---------------------------------------------------------------------------
+  // Where Save writes without asking: a file handle (browsers with the File System Access API), or the desktop
+  // app's current file, which only the desktop shell knows. Opening, Save as and New change it.
+  let fileHandle = null;
+  const desktopFiles = () => window.ppDesktop && window.ppDesktop.saveProject ? window.ppDesktop : null;
+  const PROJECT_TYPES = [{ description: 'DaVinci project', accept: { 'application/x-davinci': ['.davinci'] } }];
+  const projectBase = (name) => String(name || '').replace(/\.davinci$/i, '');
+
+  async function projectBytes() {
+    return (await U.gzip(JSON.stringify(S.serialize()))).buffer;
+  }
+
+  /** Open a .davinci project's bytes; `name` is the file name it came from. */
+  function loadProject(bytes, name) {
+    return U.gunzipText(bytes).then(JSON.parse, (e) => { throw new Error('This is not a DaVinci project file.', { cause: e }); }).then((data) => {
+      const { dropped } = S.load(data);
+      S.dirty = false;
+      App.view.fit();
+      PP.UI.toast('Opened "' + (S.project.name || name) + '"' + (dropped ? ' - skipped ' + dropped + ' damaged object(s)' : ''), dropped ? 'warn' : 'info');
+    });
+  }
+
   App.files = {
     async newProject() {
       if (S.project.objects.length) {
         const ok = await PP.UI.confirm('New project', 'Start a new, empty project? You can undo this with Ctrl+Z.', 'New project');
         if (!ok) return;
       }
+      fileHandle = null;
+      if (desktopFiles()) desktopFiles().closeProject();
       S.reset();
     },
-    // .davinci = the project JSON, gzipped
-    async saveProject() {
-      const name = U.safeFilename(S.project.name, 'plot') + '.davinci';
+    // .davinci = the project JSON, gzipped. Save writes to the file the project came from; Save as (or a project
+    // without one) asks where. A file name other than the suggested one renames the project.
+    async saveProject({ saveAs = false } = {}) {
+      const suggested = U.safeFilename(S.project.name, 'plot') + '.davinci';
+      const named = (fileName) => {
+        const base = projectBase(fileName).trim();
+        if (!base || base === projectBase(suggested) || base === S.project.name) return false;
+        S.project.name = base;
+        S.changed('name');
+        return true;
+      };
       try {
-        const r = await U.saveFiles([{ name, data: (await U.gzip(JSON.stringify(S.serialize()))).buffer, type: 'application/octet-stream' }]);
-        if (!r) return;
+        const desk = desktopFiles();
+        let where = '';
+        if (desk) {
+          const r = await desk.saveProject(await projectBytes(), { name: suggested, saveAs });
+          if (!r || r.canceled) return;
+          if (named(r.name)) await desk.saveProject(await projectBytes(), {});
+          where = ' as ' + r.name;
+        } else if (window.showSaveFilePicker) {
+          if (saveAs || !fileHandle) {
+            try { fileHandle = await window.showSaveFilePicker({ suggestedName: suggested, types: PROJECT_TYPES }); }
+            catch (e) { if (e.name === 'AbortError') return; throw e; }
+            named(fileHandle.name);
+          }
+          const w = await fileHandle.createWritable();
+          await w.write(await projectBytes());
+          await w.close();
+          where = ' as ' + fileHandle.name;
+        } else {
+          let name = suggested;
+          if (saveAs) {
+            const base = await PP.UI.prompt('Save as', 'File name', projectBase(suggested), 'Save');
+            if (base === null) return;
+            named(base);
+            name = U.safeFilename(projectBase(base) || S.project.name, 'plot') + '.davinci';
+          }
+          await U.saveFiles([{ name, data: await projectBytes(), type: 'application/octet-stream' }]);
+          where = ' to your downloads folder';
+        }
         S.dirty = false;
-        PP.UI.toast('Project saved' + (U.savedTo(r) || ' to your downloads folder'), 'info');
+        PP.UI.toast('Project saved' + where, 'info');
       } catch (e) { PP.UI.toast('Could not save the project: ' + e.message, 'error'); }
     },
+    /** Open a project: the given File (drag and drop, the file manager), or ask for one. */
     async openProject(file) {
-      file = file || await U.pickFile('.davinci');
-      if (!file) return;
       try {
-        let data;
-        try { data = JSON.parse(await U.gunzipText(await U.readFile(file, 'arraybuffer'))); } catch (e) { throw new Error('This is not a DaVinci project file.', { cause: e }); }
-        const { dropped } = S.load(data);
-        App.view.fit();
-        PP.UI.toast('Opened "' + (S.project.name || file.name) + '"' + (dropped ? ' - skipped ' + dropped + ' damaged object(s)' : ''), dropped ? 'warn' : 'info');
-      } catch (e) { PP.UI.toast('Could not open project: ' + e.message, 'error'); }
+        const desk = desktopFiles();
+        if (file) {
+          fileHandle = null;
+          if (desk) desk.closeProject();
+          await loadProject(await U.readFile(file, 'arraybuffer'), file.name);
+        } else if (desk) {
+          const f = await desk.openProject();
+          if (!f) return;
+          await loadProject(f.data, f.name).catch((e) => { desk.closeProject(); throw e; });
+        } else if (window.showOpenFilePicker) {
+          let handle;
+          try { [handle] = await window.showOpenFilePicker({ types: PROJECT_TYPES, excludeAcceptAllOption: false }); }
+          catch (e) { if (e.name === 'AbortError') return; throw e; }
+          await loadProject(await (await handle.getFile()).arrayBuffer(), handle.name);
+          fileHandle = handle;
+        } else {
+          const f = await U.pickFile('.davinci');
+          if (!f) return;
+          fileHandle = null;
+          await loadProject(await U.readFile(f, 'arraybuffer'), f.name);
+        }
+      } catch (e) { PP.UI.toast('Could not open the project: ' + e.message, 'error'); }
     },
     async importSVG(file, opts = {}) {
       file = file || await U.pickFile('.svg,image/svg+xml');
@@ -441,61 +514,6 @@
     events.emit('tool', id);
   };
 
-  function buildHeader() {
-    const UI = PP.UI;
-    const header = U.$('#header');
-    const profSel = h('select', { class: 'printer-select', title: 'Active printer profile' });
-    const fillProfiles = () => {
-      U.clear(profSel);
-      const list = allProfiles();
-      const b = list.filter(p => p.builtin), c = list.filter(p => !p.builtin);
-      const g1 = h('optgroup', { label: 'Presets' }, b.map(p => h('option', { value: p.id }, p.name)));
-      profSel.appendChild(g1);
-      if (c.length) profSel.appendChild(h('optgroup', { label: 'My profiles' }, c.map(p => h('option', { value: p.id }, p.name))));
-      profSel.value = App.profile().id;
-    };
-    fillProfiles();
-    profSel.addEventListener('change', () => App.setProfile(profSel.value));
-    events.on('profile', fillProfiles);
-
-    // the paper lives in a popover from the top bar (it is a project setting, not a property of a selection)
-    const paperLbl = h('span', null, UI.paperLabel());
-    const paperB = h('button', { class: 'btn btn-menu', title: 'Paper size and position', onclick: () => UI.openPaper(paperB) }, UI.icon('paper', 15), paperLbl, UI.icon('chevron', 12));
-    S.events.on('change', (k) => { if (k === 'paper' || k === 'load' || k === 'undo' || k === 'redo') paperLbl.textContent = UI.paperLabel(); });
-
-    const nameInput = h('input', { class: 'project-name', value: S.project.name, title: 'Project name', spellcheck: 'false' });
-    nameInput.addEventListener('change', () => { S.project.name = nameInput.value.trim() || 'Untitled plot'; S.changed('name'); });
-    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') nameInput.blur(); e.stopPropagation(); });
-    S.events.on('change', (k) => { if ((k === 'load' || k === 'undo' || k === 'redo') && document.activeElement !== nameInput) nameInput.value = S.project.name; });
-
-    const undoB = UI.iconBtn('undo', 'Undo (Ctrl+Z)', () => S.undo());
-    const redoB = UI.iconBtn('redo', 'Redo (Ctrl+Shift+Z)', () => S.redo());
-    const updHist = () => { undoB.disabled = !S.undoStack.length; redoB.disabled = !S.redoStack.length; };
-    S.events.on('history', updHist); updHist();
-
-    header.append(
-      h('div', { class: 'brand' },
-        h('span', { class: 'logo', html: '<svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="6" fill="currentColor"/><path d="M9 23c3-9 6-12 8-8s4 1 6-6" stroke="var(--panel)" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>' }),
-        h('span', { class: 'brand-name' }, 'DaVinci')),
-      nameInput,
-      h('div', { class: 'hgroup' },
-        UI.iconBtn('new', 'New project', () => App.files.newProject()),
-        UI.iconBtn('open', 'Open project (Ctrl+O)', () => App.files.openProject()),
-        UI.iconBtn('save', 'Save project (Ctrl+S)', () => App.files.saveProject()),
-        h('span', { class: 'vsep' }), undoB, redoB),
-      h('div', { class: 'hspacer' }),
-      h('div', { class: 'hgroup printer-group' }, UI.icon('printer', 15), profSel,
-        UI.iconBtn('settings', 'Printer & plotter settings', () => UI.openPrinterSettings(), { size: 15 })),
-      paperB,
-      h('span', { class: 'vsep' }),
-      h('div', { class: 'hgroup' },
-        UI.btn('Calibrate', () => UI.openCalibration(), { cls: 'btn-ghost', title: 'Calibration test files' }),
-        UI.btn('Help', () => UI.openHelp(), { cls: 'btn-ghost', title: 'How to plot on your X1C / help' }),
-        UI.btn('Preview', () => PP.Preview.toggle(), { cls: 'btn-preview', title: 'Animated draw preview' }),
-        UI.btn('Download G-code', () => UI.openExport(), { icon: 'download', primary: true, title: 'Generate G-code (Ctrl+E)' })),
-    );
-  }
-
   function buildToolStrip() {
     const strip = U.$('#toolstrip');
     for (const t of TOOLS) {
@@ -546,43 +564,27 @@
   }
 
   function buildStatusBar() {
+    const UI = PP.UI;
     const bar = U.$('#statusbar');
     const pos = h('span', { class: 'st-pos' }, 'X —  Y —');
     const noz = h('span', { class: 'st-noz', title: 'Where the NOZZLE will be when the pen is at the cursor' }, '');
     const hint = h('span', { class: 'st-hint' }, '');
     const sel = h('span', { class: 'st-sel' }, '');
-    const plan = h('span', { class: 'st-plan' }, '');
-    const check = h('button', { class: 'st-check ok', onclick: () => showChecks() }, '');
-    bar.append(pos, noz, sel, hint, h('span', { class: 'hspacer' }), plan, check);
 
-    // plot summary (was a right-panel section): time, pens, line length; the chip lists anything to look at
-    let notes = [];
-    let chipPop = null;
-    const summarizeNow = () => {
-      if (chipPop) { chipPop.close(); chipPop = null; }
-      let pl;
-      try { pl = App.buildPlan(); } catch (e) { console.error(e); return; }
-      const st = pl.stats, n = pl.jobs.length;
-      plan.textContent = n ? '≈ ' + U.formatDuration(st.time + 45) + ' · ' + n + (n === 1 ? ' pen' : ' pens') + ' · ' + U.formatLength(st.drawLen) + ' of line · ' + st.lifts + ' lifts' : '';
-      notes = [];
-      if (!n) notes.push(['info', App.emptyPlanMessage(pl)]);
-      else if (pl.clipped) notes.push(['warn', 'Some lines are outside the drawable area (shown in red) and will be clipped.']);
-      const hidden = S.project.layers.filter(l => !l.visible && S.project.objects.some(o => o.layerId === l.id));
-      if (hidden.length) notes.push(['info', hidden.length + ' hidden layer(s) will not be plotted.']);
-      PP.GCode.validateProfile(pl.profile).forEach(e => notes.push(['error', e]));
-      const worst = notes.some(x => x[0] === 'error') ? 'error' : notes.some(x => x[0] === 'warn') ? 'warn' : notes.length ? 'info' : 'ok';
-      check.className = 'st-check ' + worst;
-      U.clear(check);
-      check.append(PP.UI.icon(worst === 'ok' ? 'check' : worst === 'info' ? 'help' : 'warn', 12),
-        h('span', null, worst === 'ok' ? 'Ready to plot' : !n && notes.length === 1 ? 'Nothing to plot' : notes.length + (notes.length === 1 ? ' note' : ' notes')));
-    };
-    const summarize = U.debounce(summarizeNow, 300);
-    function showChecks() {
-      if (!notes.length) return;
-      chipPop = PP.UI.popover(check, h('div', { class: 'warns popover-pad' }, notes.map(([t, m]) => h('div', { class: 'warn-item ' + t }, PP.UI.icon(t === 'info' ? 'help' : 'warn', 14), h('span', null, m)))), { align: 'right' });
-    }
-    S.events.on('change', summarize); events.on('profile', summarize); events.on('prefs', summarize);
-    summarizeNow();
+    // the printer and the paper: what the plot is set up for, one click from changing
+    const printerLbl = h('span', null, App.profile().name);
+    const printer = h('button', { class: 'st-chip st-printer', title: 'Printer', 'aria-label': 'Printer: ' + App.profile().name },
+      UI.icon('printer', 13), printerLbl, UI.icon('chevron', 11));
+    printer.addEventListener('click', () => UI.menu(printer, PP.Menus.resolve(PP.Menus.MENUS.find(m => m.id === 'printer')), { align: 'right' }));
+    events.on('profile', () => { printerLbl.textContent = App.profile().name; printer.setAttribute('aria-label', 'Printer: ' + App.profile().name); });
+
+    const paperLbl = h('span', null, UI.paperLabel());
+    const paper = h('button', { class: 'st-chip st-paper', title: 'Paper size and position' }, UI.icon('paper', 13), paperLbl, UI.icon('chevron', 11));
+    paper.addEventListener('click', () => UI.openPaper(paper));
+    S.events.on('change', (k) => { if (k === 'paper' || k === 'load' || k === 'undo' || k === 'redo') paperLbl.textContent = UI.paperLabel(); });
+
+    bar.append(pos, noz, sel, hint, h('span', { class: 'hspacer' }), printer, paper);
+
     App.view.events.on('cursor', (w) => {
       if (!w) { pos.textContent = 'X —  Y —'; noz.textContent = ''; return; }
       const p = App.profile();
@@ -593,16 +595,16 @@
       const tips = {
         select: '',
         pan: 'Drag to pan • scroll to zoom',
-        pen: 'Drag to draw freehand • smoothing is set in the Draw tab',
+        pen: 'Drag to draw freehand',
         line: 'Drag to draw a line • Shift snaps to 15°',
         polyline: 'Click to add points • double-click or Enter to finish • click the first point to close • Backspace removes a point',
         curve: 'Click to add points for a smooth curve • double-click or Enter to finish',
         rect: 'Drag to draw • Shift = square • Alt = from center',
         ellipse: 'Drag to draw • Shift = circle • Alt = from center',
-        polygon: 'Drag to draw • set the number of sides in the Draw tab',
-        star: 'Drag to draw • set points and inner radius in the Draw tab',
+        polygon: 'Drag to draw',
+        star: 'Drag to draw',
         text: 'Click on the bed to place text',
-        eraser: 'Drag over lines to erase • set the eraser size in the Draw tab',
+        eraser: 'Drag over lines to erase',
       };
       hint.textContent = tips[App.view.toolId] || '';
     };
@@ -613,6 +615,47 @@
       sel.textContent = n ? n + ' selected' : '';
     };
     S.events.on('selection', updSel);
+  }
+
+  /** The bottom of the right panel: what the plot takes, whether it is ready, Preview and Export G-code. */
+  function buildPlotBar(host) {
+    const UI = PP.UI;
+    const plan = h('div', { class: 'plot-sum' }, '');
+    const check = h('button', { class: 'plot-check ok', onclick: () => showChecks() }, '');
+    const preview = UI.btn('Preview', () => PP.Preview.toggle(), { icon: 'play', title: 'Animate the simulated G-code' });
+    host.appendChild(h('div', { class: 'plot-bar' },
+      h('div', { class: 'plot-status' }, plan, check),
+      h('div', { class: 'plot-actions' }, preview,
+        UI.btn('Export G-code', () => UI.openExport(), { icon: 'download', primary: true, title: 'Export G-code (' + PP.Menus.keyLabel('Mod+E') + ')' }))));
+    events.on('preview', (on) => preview.classList.toggle('on', on));
+
+    let notes = [];
+    let chipPop = null;
+    const summarizeNow = () => {
+      if (chipPop) { chipPop.close(); chipPop = null; }
+      let pl;
+      try { pl = App.buildPlan(); } catch (e) { console.error(e); return; }
+      const st = pl.stats, n = pl.jobs.length;
+      plan.textContent = n ? '≈ ' + U.formatDuration(st.time + 45) + ' · ' + n + (n === 1 ? ' pen' : ' pens') + ' · ' + U.formatLength(st.drawLen) + ' of line · ' + st.lifts + ' lifts' : 'Nothing to plot yet';
+      notes = [];
+      if (!n) notes.push(['info', App.emptyPlanMessage(pl)]);
+      else if (pl.clipped) notes.push(['warn', 'Some lines are outside the drawable area (shown in red) and will be clipped.']);
+      const hidden = S.project.layers.filter(l => !l.visible && S.project.objects.some(o => o.layerId === l.id));
+      if (hidden.length) notes.push(['info', hidden.length + ' hidden layer(s) will not be plotted.']);
+      PP.GCode.validateProfile(pl.profile).forEach(e => notes.push(['error', e]));
+      const worst = notes.some(x => x[0] === 'error') ? 'error' : notes.some(x => x[0] === 'warn') ? 'warn' : notes.length ? 'info' : 'ok';
+      check.className = 'plot-check ' + worst;
+      U.clear(check);
+      check.append(UI.icon(worst === 'ok' ? 'check' : worst === 'info' ? 'help' : 'warn', 12),
+        h('span', null, worst === 'ok' ? 'Ready to plot' : !n && notes.length === 1 ? 'Nothing to plot' : notes.length + (notes.length === 1 ? ' note' : ' notes')));
+    };
+    const summarize = U.debounce(summarizeNow, 300);
+    function showChecks() {
+      if (!notes.length) return;
+      chipPop = UI.popover(check, h('div', { class: 'warns popover-pad' }, notes.map(([t, m]) => h('div', { class: 'warn-item ' + t }, UI.icon(t === 'info' ? 'help' : 'warn', 14), h('span', null, m)))), { align: 'right' });
+    }
+    S.events.on('change', summarize); events.on('profile', summarize); events.on('prefs', summarize);
+    summarizeNow();
   }
 
   // ---------------------------------------------------------------------------
@@ -688,7 +731,10 @@
   // Boot
   // ---------------------------------------------------------------------------
   App.init = async function () {
-    buildHeader();
+    if (!PP.UI.initNativeMenu()) PP.UI.buildMenuBar(U.$('#menubar'));
+    const title = () => { document.title = S.project.name + ' — DaVinci'; };
+    S.events.on('change', (k) => { if (k === 'name' || k === 'load' || k === 'undo' || k === 'redo') title(); });
+    title();
     buildToolStrip();
     App.view = new PP.View(U.$('#canvas-wrap'));
     PP.installTools(App.view);
@@ -697,7 +743,10 @@
     buildStatusBar();
     PP.Preview.init(App.view);
     PP.UI.buildLeftPanel(U.$('#left-panel'));
-    PP.UI.buildRightPanel(U.$('#right-panel'));
+    const right = U.$('#right-panel'), panels = h('div', { class: 'rp-body' });
+    right.appendChild(panels);
+    PP.UI.buildRightPanel(panels);
+    buildPlotBar(right);
     App.setTool('select');
 
     document.addEventListener('keydown', onKeyDown);
@@ -709,18 +758,16 @@
       prevSel = S.selection.slice();
       if (gone.length) S.remove(gone.map(o => o.id), { history: false }); // undo brings the text back, not an empty object
     });
-    // Save / Open / Download work everywhere, even while typing in a field (fields stop keydown propagation).
-    // Capture phase, before those fields; blurring commits the field's value first.
+    // The file shortcuts (Save, Open, Export...) work everywhere, even while typing in a field (fields stop keydown
+    // propagation). Capture phase, before those fields; blurring commits the field's value first.
     window.addEventListener('keydown', (e) => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
-      const k = e.key.toLowerCase();
-      const fn = k === 's' ? App.files.saveProject : k === 'o' ? App.files.openProject : k === 'e' ? PP.UI.openExport : null;
-      if (!fn) return;
+      const id = PP.Menus.globalCommand(e);
+      if (!id) return;
       e.preventDefault(); // never the browser's own Save page / Open file
       if (PP.UI.hasModal()) return;
       e.stopPropagation();
       if (isTyping({ target: document.activeElement })) document.activeElement.blur();
-      fn();
+      PP.Menus.run(id);
     }, true);
     document.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', () => { if (App.view.spaceDown) { App.view.spaceDown = false; } });
@@ -755,10 +802,13 @@
       PP.Storage.setLocal('seenHelp', true);
       setTimeout(() => PP.UI.openHelp(), 400);
     }
-    // desktop app: a .davinci double-clicked in the file manager (at launch, or while the app is open)
+    // desktop app: a .davinci double-clicked in the file manager (at launch, or while the app is open). The shell
+    // makes it the current file, so Save writes back to it.
     const desk = window.ppDesktop;
     if (desk && desk.takeOpenFile) {
-      const open = (f) => { if (f) App.files.openProject(new File([f.data], f.name)); };
+      const open = (f) => {
+        if (f) loadProject(f.data, f.name).catch((e) => { desk.closeProject(); PP.UI.toast('Could not open the project: ' + e.message, 'error'); });
+      };
       desk.onOpenFile(open);
       desk.takeOpenFile().then(open, (e) => PP.UI.toast('Could not open the file: ' + e.message, 'error'));
     }

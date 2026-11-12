@@ -1,4 +1,4 @@
-/* DaVinci - right panel: selection properties, layers, paper, plotter settings, plot summary. */
+/* DaVinci - right panel: layers, selection properties, and the paper settings. */
 (function (PP) {
   'use strict';
 
@@ -371,7 +371,7 @@
   // ---------------------------------------------------------------------------
   // Paper
   // ---------------------------------------------------------------------------
-  /** The paper settings, shown as a popover from the top bar's paper button. Returns { el, dispose }. */
+  /** The paper settings, shown as a popover from the status bar's paper button. Returns { el, dispose }. */
   function paperForm() {
     const el = h('div', { class: 'paper-form' });
     const pa = () => S.project.paper;
@@ -416,12 +416,13 @@
     return { el, dispose: off };
   }
 
-  UI.openPaper = function (anchor) {
+  /** anchor: what the popover hangs from (default: the paper button in the status bar). */
+  UI.openPaper = function (anchor = U.$('.st-paper')) {
     const f = paperForm();
     if (!UI.popover(anchor, h('div', { class: 'popover-pad' }, f.el), { onClose: f.dispose })) f.dispose();
   };
 
-  /** Short label for the top bar: "Letter · portrait", "A4 · landscape", "200 × 150 mm". */
+  /** Short label for the status bar: "Letter · portrait", "A4 · landscape", "200 × 150 mm". */
   UI.paperLabel = function () {
     const pa = S.project.paper;
     const pr = S.PAPER_PRESETS.find(x => x.id === pa.preset);

@@ -3,6 +3,7 @@
   'use strict';
 
   const U = PP.U, h = U.h;
+  const events = new U.Emitter(); // 'modal' when a dialog opens or closes
 
   // ---------------------------------------------------------------------------
   // Icons (24x24, stroke based)
@@ -110,6 +111,7 @@
     requestAnimationFrame(() => back.classList.add('show'));
     const api = { el: box, body: bodyEl, foot: footEl, close, setTitle: (t) => { head.querySelector('h2').textContent = t; } };
     openModals.push(api);
+    events.emit('modal', openModals.length);
     function close() {
       const i = openModals.indexOf(api);
       if (i < 0) return;
@@ -117,6 +119,7 @@
       back.classList.remove('show');
       setTimeout(() => back.remove(), 160);
       if (onClose) onClose();
+      events.emit('modal', openModals.length);
     }
     return api;
   }
@@ -137,6 +140,27 @@
         onClose: () => { if (!done) { done = true; resolve(false); } },
         width: '420px',
       });
+    });
+  }
+
+  /** Ask for one line of text; resolves with it, or null if canceled. */
+  function promptDialog(title, label, value = '', okLabel = 'OK') {
+    return new Promise((resolve) => {
+      let done = false;
+      const input = h('input', { type: 'text', value, spellcheck: 'false', 'aria-label': label });
+      const finish = (v) => { if (done) return; done = true; m.close(); resolve(v); };
+      input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') finish(input.value); if (e.key === 'Escape') finish(null); });
+      const m = modal({
+        title,
+        body: h('div', { class: 'field' }, h('label', null, label), input),
+        footer: [
+          h('button', { class: 'btn', onclick: () => finish(null) }, 'Cancel'),
+          h('button', { class: 'btn btn-primary', onclick: () => finish(input.value) }, okLabel),
+        ],
+        onClose: () => { if (!done) { done = true; resolve(null); } },
+        width: '420px',
+      });
+      requestAnimationFrame(() => { input.focus(); input.select(); });
     });
   }
 
@@ -263,7 +287,7 @@
 
   /**
    * A small panel anchored to an element (menus, the paper settings, the plot check). Closes on an outside
-   * click, Escape or the returned close(). opts.align: 'left' | 'right' edge of the anchor.
+   * click, Escape or the returned close(). opts.align: 'left' | 'right' edge of the anchor; opts.className.
    */
   let openPop = null;
   function closePopover() { if (openPop) openPop.close(); }
@@ -271,7 +295,7 @@
     // clicking the anchor of the open popover again closes it (returns null)
     if (openPop && openPop.anchor === anchor) { closePopover(); return null; }
     closePopover();
-    const el = h('div', { class: 'popover', role: 'dialog' }, content);
+    const el = h('div', { class: 'popover' + (opts.className ? ' ' + opts.className : ''), role: opts.className ? null : 'dialog' }, content);
     document.body.appendChild(el);
     const r = anchor.getBoundingClientRect();
     const w = el.offsetWidth, ht = el.offsetHeight;
@@ -314,7 +338,7 @@
   }
 
   PP.UI = Object.assign(PP.UI || {}, {
-    icon, toast, modal, closeTopModal, hasModal, confirm: confirmDialog, popover, closePopover,
+    events, icon, toast, modal, closeTopModal, hasModal, confirm: confirmDialog, prompt: promptDialog, popover, closePopover,
     numberField, selectField, checkField, segmented, paramForm, section, btn, iconBtn,
   });
 })(window.PP = window.PP || {});
