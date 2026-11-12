@@ -1,5 +1,5 @@
 /*
- * PenPlot Studio browser test runner (open tests/index.html via `npm start`, or run headless with
+ * PenPlot Studio browser test runner (open /tests/ via `npm start`, or run headless with
  * `npm run test:e2e`). The checks themselves live in harness.js, which the Node suites share.
  *
  * Programmatic use (Playwright, devtools):

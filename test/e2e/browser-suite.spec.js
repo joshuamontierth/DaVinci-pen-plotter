@@ -1,4 +1,4 @@
-// Runs the full in-browser suite (tests/index.html: simulator self-test, edge cases, every font,
+// Runs the full in-browser suite (test/browser/index.html, served at /tests/: simulator self-test, edge cases, every font,
 // pattern, trace mode and calibration, seeded fuzz and editor-state fuzz) in real Chromium.
 //   FUZZ_N    number of fuzz scenarios (default 60; the handoff's reference run used 200)
 //   FUZZ_SEED fuzz seed (default 1)

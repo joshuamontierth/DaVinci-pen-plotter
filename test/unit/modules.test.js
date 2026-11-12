@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { scriptsOf } from './load.js';
 
 describe('module loading', () => {
-  it('tests/index.html loads app modules in the same order as index.html', () => {
-    const app = scriptsOf('index.html');
-    const testPage = scriptsOf('tests/index.html').filter((s) => s.startsWith('js/'));
+  it('the browser test page loads app modules in the same order as index.html', () => {
+    const app = scriptsOf('src/index.html');
+    const testPage = scriptsOf('test/browser/index.html').filter((s) => s.startsWith('src/js/'));
     expect(testPage.length).toBeGreaterThan(10);
     // every module the test page loads is in the app, in the same relative order
     const positions = testPage.map((s) => app.indexOf(s));

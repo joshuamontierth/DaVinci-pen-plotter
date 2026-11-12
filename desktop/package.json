@@ -25,13 +25,13 @@
     "copyright": "Copyright (c) 2026 joshuamontierth",
     "asar": true,
     "directories": {
-      "output": "dist",
+      "output": "../dist",
       "buildResources": "build"
     },
     "files": [
       "main.js",
       "preload.js",
-      "app/**/*",
+      "bundle/**/*",
       "build/icon.png"
     ],
     "linux": {

@@ -1,6 +1,6 @@
-// Stage the static web app into desktop/app/ so Electron (dev) and electron-builder (dist) both load the same
-// files. Runs before `desktop:start` / `desktop:dist`. Plain Node so it behaves the same on Windows and Linux.
-// desktop/app/ is a build artifact: it is git-ignored, wiped and re-copied on every run.
+// Stage the static web app (src/) into desktop/bundle/app/ so Electron (dev) and electron-builder (dist) both load
+// the same files. Runs before `desktop:start` / `desktop:dist`. Plain Node so it behaves the same on Windows and Linux.
+// desktop/bundle/ is a build artifact: it is git-ignored, wiped and re-copied on every run.
 import { execFileSync } from 'node:child_process';
 import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -8,26 +8,31 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const out = path.join(here, 'app');
+const src = path.join(root, 'src');
+const bundle = path.join(here, 'bundle');
+const out = path.join(bundle, 'app');
 
-// Everything the page loads at runtime. README.md carries the credits and licence notes (vendor/ has its own
-// licence files). If index.html starts referencing another top-level file or folder, add it here; the check at the
-// bottom fails the build if something it references did not make it into the bundle.
-const ENTRIES = ['index.html', 'css', 'js', 'vendor', 'README.md'];
+// Everything the page loads at runtime, from src/. README.md (the credits and licence notes; vendor/ has its own
+// licence files) comes from the repository root. If index.html starts referencing another file or folder in src/,
+// add it here; the check at the bottom fails the build if something it references did not make it into the bundle.
+const ENTRIES = ['index.html', 'css', 'js', 'vendor'];
+const SOURCES = [...ENTRIES.map((name) => path.join(src, name)), path.join(root, 'README.md')];
 
 const JUNK = new Set(['.DS_Store', 'Thumbs.db', 'Desktop.ini']);
 
-await rm(out, { recursive: true, force: true });
+await rm(bundle, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-for (const name of ENTRIES) {
-  const from = path.join(root, name);
+for (const from of SOURCES) {
   try {
     await stat(from);
   } catch {
-    throw new Error(`desktop/prepare: ${name} not found in ${root}`);
+    throw new Error(`desktop/prepare: ${from} not found`);
   }
-  await cp(from, path.join(out, name), { recursive: true, filter: (src) => !JUNK.has(path.basename(src)) });
+  await cp(from, path.join(out, path.basename(from)), {
+    recursive: true,
+    filter: (file) => !JUNK.has(path.basename(file)),
+  });
 }
 
 // Stamp the build with its commit and date (shown at the end of Help → Safety), so builds can be told apart.
@@ -38,7 +43,7 @@ const git = (...args) => {
     return '';
   }
 };
-const changed = git('status', '--porcelain', '--', ...ENTRIES) ? ' + local changes' : '';
+const changed = git('status', '--porcelain', '--', ...SOURCES) ? ' + local changes' : '';
 const stamp = `${git('rev-parse', '--short', 'HEAD') || 'unknown commit'}${changed}, ${new Date().toISOString().slice(0, 10)}`;
 const html = (await readFile(path.join(out, 'index.html'), 'utf8')).replace(
   /<head>/i,
@@ -61,4 +66,4 @@ if (missing.length) {
   throw new Error(`desktop/prepare: index.html references files that are not bundled: ${missing.join(', ')}`);
 }
 
-console.log(`desktop/prepare: staged ${ENTRIES.join(', ')} into ${path.relative(process.cwd(), out) || '.'}`);
+console.log(`desktop/prepare: staged the app into ${path.relative(process.cwd(), out) || '.'}`);

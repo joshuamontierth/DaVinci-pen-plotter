@@ -1,5 +1,5 @@
-// G-code generator (js/core/gcode.js): pins the documented X1C defaults and the safety rules from
-// HANDOFF.md §3–§5, plus a golden file so any change to the emitted G-code shows up in review.
+// G-code generator (src/js/core/gcode.js): pins the documented X1C defaults and the safety rules from
+// docs/HANDOFF.md §3–§5, plus a golden file so any change to the emitted G-code shows up in review.
 import { describe, expect, it } from 'vitest';
 
 const GC = window.PP.GCode;

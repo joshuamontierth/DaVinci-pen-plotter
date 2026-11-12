@@ -3,7 +3,7 @@
  * Smoke test for the Electron desktop app (Windows and Linux).
  *
  *   npm run desktop:test                 # dev app: desktop/main.js with the staged files (npm run desktop:prepare)
- *   npm run desktop:test -- --packaged   # the built app in desktop/dist/*-unpacked (npm run desktop:dist)
+ *   npm run desktop:test -- --packaged   # the built app in dist/*-unpacked (npm run desktop:dist)
  *
  * Linux needs a display: run it under `xvfb-run -a` on a headless machine. Exits non-zero on any failed check.
  */
@@ -26,12 +26,12 @@ const linuxArgs = process.platform === 'linux' ? ['--no-sandbox'] : [];
 function launchOptions() {
   if (packaged) {
     const exe = win
-      ? join(DESKTOP, 'dist', 'win-unpacked', 'PenPlot Studio.exe')
-      : join(DESKTOP, 'dist', 'linux-unpacked', 'penplot-studio');
+      ? join(ROOT, 'dist', 'win-unpacked', 'PenPlot Studio.exe')
+      : join(ROOT, 'dist', 'linux-unpacked', 'penplot-studio');
     if (!existsSync(exe)) throw new Error('Built app not found at ' + exe + ' - run `npm run desktop:dist` first.');
     return { executablePath: exe, args: linuxArgs };
   }
-  if (!existsSync(join(DESKTOP, 'app', 'index.html')))
+  if (!existsSync(join(DESKTOP, 'bundle', 'app', 'index.html')))
     throw new Error('Run `npm run desktop:prepare` first (stages the app files).');
   const electronPath = createRequire(join(DESKTOP, 'package.json'))('electron');
   return { executablePath: electronPath, args: [...linuxArgs, join(DESKTOP, 'main.js')], cwd: DESKTOP };

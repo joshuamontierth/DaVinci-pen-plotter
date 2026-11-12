@@ -1,5 +1,5 @@
-// ESLint flat config. The app (js/, tests/) is classic browser scripts that share state through the
-// window.PP namespace; tooling and the Node test suites are ES modules.
+// ESLint flat config. The app (src/js/, test/browser/) is classic browser scripts that share state through the
+// window.PP namespace; the server, tooling and the Node test suites are ES modules.
 import js from '@eslint/js';
 import globals from 'globals';
 
@@ -8,16 +8,18 @@ export default [
     ignores: [
       '**/*.tmp.mjs',
       'node_modules/',
-      'vendor/',
+      'src/vendor/',
+      'dist/',
       'coverage/',
       'test-results/',
       'playwright-report/',
       'blob-report/',
+      'desktop/bundle/',
     ],
   },
   js.configs.recommended,
   {
-    files: ['js/**/*.js', 'tests/**/*.js'],
+    files: ['src/js/**/*.js', 'test/browser/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -30,7 +32,7 @@ export default [
   },
   {
     // feature-detected: the harness prefers setImmediate when it runs under Node
-    files: ['tests/harness.js'],
+    files: ['test/browser/harness.js'],
     languageOptions: { globals: { setImmediate: 'readonly' } },
   },
   {
@@ -39,20 +41,16 @@ export default [
   },
   {
     // Playwright specs run in Node but page.evaluate() callbacks run in the browser
-    files: ['e2e/**/*.js'],
+    files: ['test/e2e/**/*.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
   },
   {
     // Vitest suites run in Node with jsdom's window globals
-    files: ['test/**/*.js'],
+    files: ['test/unit/**/*.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
   },
   {
-    // Electron shell (desktop/): build output is the staged copy of the app, not source
-    ignores: ['desktop/app/', 'desktop/dist/'],
-  },
-  {
-    // main.js is CommonJS and runs in Electron's main process (Node)
+    // the Electron shell is CommonJS and runs in Electron's main process (Node)
     files: ['desktop/**/*.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'commonjs', globals: globals.node },
   },

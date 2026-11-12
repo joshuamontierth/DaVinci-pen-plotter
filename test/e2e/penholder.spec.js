@@ -6,7 +6,7 @@ import { dialog, openApp } from './helpers.js';
 let files;
 
 test.beforeAll(async () => {
-  const { default: Module } = await import(new URL('../vendor/manifold/manifold.js', import.meta.url).href);
+  const { default: Module } = await import(new URL('../../src/vendor/manifold/manifold.js', import.meta.url).href);
   const api = await Module();
   api.setup();
   const { Manifold } = api;

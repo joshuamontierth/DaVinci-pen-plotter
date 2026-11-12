@@ -4,5 +4,5 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "prettier.requireConfig": true,
   "files.eol": "\n",
-  "search.exclude": { "vendor/": true, "package-lock.json": true }
+  "search.exclude": { "src/vendor/": true, "package-lock.json": true }
 }

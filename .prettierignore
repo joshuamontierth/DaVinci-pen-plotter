@@ -1,21 +1,21 @@
 # Generated / third-party
 node_modules/
-vendor/
+src/vendor/
+dist/
 coverage/
 test-results/
 playwright-report/
 blob-report/
 package-lock.json
-desktop/app/
-desktop/dist/
+desktop/bundle/
 test/unit/__snapshots__/
 
 # Hand-formatted app code and docs: kept out of Prettier on purpose (a reformat would expand the
 # dense style by 25-40% and bury `git blame`). Remove these lines to opt in with one `npm run format`.
-js/
-css/
+src/js/
+src/css/
 *.html
-tests/
+test/browser/
 *.md
 
 # scratch scripts agents run from the repo root

@@ -24,17 +24,12 @@ Desktop.ini
 !.claude/launch.json
 !.claude/settings.json
 
-# Electron desktop app: staged copy of the web app and installer output (desktop/node_modules is covered above)
-desktop/app/
-desktop/dist/
+# Build output: the desktop app's staged bundle, and the installers
+desktop/bundle/
+dist/
 
 # scratch scripts agents run from the repo root
 *.tmp.mjs
-
-# your own Bambu .gcode.3mf samples (contain your printer settings): never committed
-experiments/3mf-samples/
-experiments/stls/
-experiments/pen-holder/
 
 # 3D models from other designers (license): the app asks for them, never ship them
 *.stl

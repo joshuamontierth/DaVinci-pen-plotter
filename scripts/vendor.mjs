@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Rebuilds vendor/ from pinned npm packages (run: npm run vendor).
+ * Rebuilds src/vendor/ from pinned npm packages (run: npm run vendor).
  *
  * Only static data files are copied (fonts, the opentype.js browser build and licenses); the packages
  * themselves are never installed, so their Node-side dependencies stay out of node_modules.
@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const VENDOR = join(ROOT, 'vendor');
+const VENDOR = join(ROOT, 'src', 'vendor');
 
 const PACKAGES = [
   {
@@ -78,7 +78,7 @@ try {
       join(out, 'SOURCE.json'),
       JSON.stringify({ package: info.name, version: info.version, integrity: info.integrity }, null, 2) + '\n',
     );
-    console.log(`vendor/${pkg.dest}: ${info.name}@${info.version} (${info.integrity.slice(0, 20)}...)`);
+    console.log(`src/vendor/${pkg.dest}: ${info.name}@${info.version} (${info.integrity.slice(0, 20)}...)`);
   }
 } finally {
   rmSync(tmp, { recursive: true, force: true });

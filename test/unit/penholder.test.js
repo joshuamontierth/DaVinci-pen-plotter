@@ -1,4 +1,4 @@
-// Pen-holder bore resizer (js/core/penholder.js) on synthetic parts built with manifold itself, the owner's local
+// Pen-holder bore resizer (src/js/core/penholder.js) on synthetic parts built with manifold itself, the owner's local
 // copies of the MakerWorld parts when present, and the ZIP reader that takes the MakerWorld download.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,8 +13,8 @@ let api;
 
 beforeAll(async () => {
   api = await PH.load({
-    moduleUrl: pathToFileURL(join(ROOT, 'vendor/manifold/manifold.js')).href,
-    wasmBinary: readFileSync(join(ROOT, 'vendor/manifold/manifold.wasm')),
+    moduleUrl: pathToFileURL(join(ROOT, 'src/vendor/manifold/manifold.js')).href,
+    wasmBinary: readFileSync(join(ROOT, 'src/vendor/manifold/manifold.wasm')),
   });
 });
 
@@ -125,9 +125,9 @@ describe('bore resizer', () => {
   });
 });
 
-// The owner's copies of the MakerWorld parts, when present on this machine (experiments/stls is git-ignored: the
-// license does not allow committing them, so CI skips this)
-const REAL = join(ROOT, 'experiments/stls');
+// The owner's copies of the MakerWorld parts, when present on this machine (STL files are git-ignored: the license
+// does not allow committing them, so CI skips this)
+const REAL = join(ROOT, 'test/fixtures/makerworld');
 const realParts = [
   ['Pen Cartriage.stl', 'z', 10.56, 12.1],
   ['Spring.stl', 'y', 11.47, 12.7],

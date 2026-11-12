@@ -58,9 +58,9 @@ jobs:
         with:
           name: desktop-${{ matrix.os }}
           path: |
-            desktop/dist/*.AppImage
-            desktop/dist/*.tar.gz
-            desktop/dist/*.exe
+            dist/*.AppImage
+            dist/*.tar.gz
+            dist/*.exe
           if-no-files-found: error
           retention-days: 30
 

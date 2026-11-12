@@ -12,10 +12,10 @@
     "types": []
   },
   "include": [
-    "types/**/*.d.ts",
-    "js/core/geometry.js",
-    "js/core/optimizer.js",
-    "js/core/gcode.js",
-    "js/core/gcodesim.js"
+    "src/types/**/*.d.ts",
+    "src/js/core/geometry.js",
+    "src/js/core/optimizer.js",
+    "src/js/core/gcode.js",
+    "src/js/core/gcodesim.js"
   ]
 }

@@ -1,6 +1,6 @@
 'use strict';
 
-// PenPlot Studio desktop shell. One window that serves the bundled static web app (desktop/app/, staged by
+// PenPlot Studio desktop shell. One window that serves the bundled static web app (desktop/bundle/app/, staged by
 // prepare.mjs) from a privileged custom scheme, app://penplot/. file:// is avoided on purpose: fonts.js skips
 // local fetch() on file: pages and IndexedDB is unreliable there.
 
@@ -12,7 +12,7 @@ const APP_ID = 'com.joshuamontierth.penplotstudio';
 const SCHEME = 'app';
 const HOST = 'penplot';
 const ORIGIN = `${SCHEME}://${HOST}`;
-const APP_DIR = path.join(__dirname, 'app');
+const APP_DIR = path.join(__dirname, 'bundle', 'app');
 const ICON = path.join(__dirname, 'build', 'icon.png');
 const PRELOAD = path.join(__dirname, 'preload.js');
 
