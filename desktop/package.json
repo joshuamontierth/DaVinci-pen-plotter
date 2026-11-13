@@ -1,7 +1,7 @@
 {
   "name": "davinci-desktop",
   "productName": "DaVinci",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "DaVinci desktop app (Electron wrapper around the static web app)",
   "author": "joshuamontierth",

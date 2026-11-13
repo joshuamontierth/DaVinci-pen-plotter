@@ -1,6 +1,6 @@
 {
   "name": "davinci",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "DaVinci: pen-plotter G-code generator for Bambu Lab printers (static, no-build web app)",
   "license": "UNLICENSED",

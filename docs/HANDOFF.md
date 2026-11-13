@@ -588,8 +588,8 @@ Record every answer. They settle the assumptions in §3.
     **Add files…** takes STLs or the downloaded ZIP (`U.unzip`), matches each file to a part by name, and refuses a
     cartridge or spring without a pen bore. Parts are kept in IndexedDB (`mount:<part>`, with
     `navigator.storage.persist()`). `*.stl` and `*.3mf` are git-ignored.
-25. **2.0.0 (2026-11-12): DaVinci.** The app is renamed DaVinci (repo DaVinci-pen-plotter), with a new icon (a
-    Vitruvian circle and square, `src/assets/davinci.svg`; `npm run icons` renders `installer/icons/`). No legacy
+25. **2.0.0 (2026-11-12): DaVinci.** The app is renamed DaVinci (repo DaVinci-pen-plotter), keeping the green pen-stroke
+    icon (`src/assets/davinci.svg`; `npm run icons` renders `installer/icons/`). No legacy
     support: projects are `.davinci` (gzipped JSON with `app: "DaVinci"`; anything else is refused), storage moved
     to `davinci.*` keys and the `davinci` IndexedDB, and `.penplot` files no longer open.
     - **Layout:** `src/` (the app), `server/` (serve.mjs), `desktop/` (Electron), `installer/` (packaging), `test/`
